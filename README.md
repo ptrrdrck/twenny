@@ -18,6 +18,8 @@ Edit `data/landmarks.js` (decimal degrees, west is negative) and push.
 `npm test` checks every landmark is near San Diego.
 
 ## Development
-`npm test` runs the tests. `node scripts/build.mjs` builds `_site/`.
-Pushes to `master` deploy via GitHub Actions; in repo Settings → Pages set the
-source to **GitHub Actions** once.
+The repo is the site: no build step. `npm test` runs the tests; to try it locally,
+serve the repo root (`python3 -m http.server`) and open http://localhost:8000.
+GitHub Pages serves `master` (Settings → Pages → Deploy from a branch → `master`, `/ (root)`),
+so merging to master is deploying. Phones notice the change and offer the update.
+If you add a file the page loads, list it in `ASSETS` in `sw.js` (the tests check).

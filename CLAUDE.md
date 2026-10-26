@@ -2,7 +2,7 @@
 
 Phone PWA for San Diego ocean lifeguards: say or type a GPS fix in any format,
 see it on a map with the nearest landmark. Plain HTML/CSS/ES modules, no framework,
-no build step for development, no npm dependencies.
+no build step, no npm dependencies. The repo root is the site.
 
 ## Read first
 - **STYLE.md** is the design system (Nado Waves family). Use its fonts, tokens and
@@ -17,18 +17,21 @@ no build step for development, no npm dependencies.
 - `js/fix.js`: pure display logic (landmark line, far warning, formats, links); tested
 - `js/app.js` (UI wiring), `map.js` (Leaflet), `speech.js`, `pwa.js` (update prompt)
 - `data/landmarks.js`: landmark positions, approximate; the user edits these by hand
-- `sw.js`: service worker. `scripts/build.mjs` stamps VERSION + ASSETS into `_site/`
+- `sw.js`: service worker. Precaches ASSETS; detects new versions by re-downloading
+  and comparing files, then waits for the "tap to refresh" prompt
 - `vendor/leaflet`, `fonts/`: self-hosted so the app works offline
 
 ## Commands
 - `npm test`: all tests (node --test)
-- `node scripts/build.mjs`: build `_site/`; serve it to test the service worker
-  (unbuilt `sw.js` runs in network-first "dev" mode)
+- To try it locally, serve the repo root over http (e.g. `python3 -m http.server`)
 
 ## Rules
-- A new runtime file or folder must be added to `SITE` in `scripts/build.mjs`;
-  `test/build.test.js` fails if the page loads something that isn't precached.
+- A new file the page loads must be added to `ASSETS` in `sw.js`;
+  `test/offline.test.js` fails if it's missing.
 - Never `skipWaiting()` on install: new versions wait for the "tap to refresh" prompt.
-- Deploys: `.github/workflows/pages.yml` on push to master.
+- Deploys: classic GitHub Pages, "Deploy from a branch", `master` / root. Whatever is on
+  master is live at https://ptrrdrck.github.io/twenny/. No build or deploy workflow
+  (`.github/workflows/test.yml` only runs tests). The user works on master with regular
+  PRs and merges; keep it that way.
 - Pull requests: never add Claude/AI credit lines (no "Generated with Claude Code",
   no session links) to PR titles or descriptions.
