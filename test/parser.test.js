@@ -86,6 +86,10 @@ test('tokenize reads spoken numbers', () => {
   assert.deepEqual(nums, [117, 9.1]);
 });
 
+test('"oh eight" keeps its zero', () => {
+  assert.deepEqual(tokenize('oh eight').filter(t => t.t === 'num').map(t => [t.v, t.raw]), [[8, '08']]);
+});
+
 test('distance and bearing', () => {
   const pier = {lat: 32.5794, lon: -117.1339}, west = {lat: 32.5794, lon: -117.14};
   assert.ok(Math.abs(distNm(pier, west) - 0.30862) < 1e-4);

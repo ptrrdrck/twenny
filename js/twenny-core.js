@@ -26,7 +26,8 @@ const WORDMAP = {
 function readNumber(ws, i) {
   let j = i, val = 0, got = false;
   const w = ws[j];
-  if ((w === 'oh' || w === 'zero') && UNIT[ws[j + 1]] > 0) return {val: UNIT[ws[j + 1]], j: j + 2};
+  // "oh eight" is 8, written "08": the zero matters when digits are joined up later.
+  if ((w === 'oh' || w === 'zero') && UNIT[ws[j + 1]] > 0) return {val: UNIT[ws[j + 1]], j: j + 2, raw: '0' + UNIT[ws[j + 1]]};
   let hundreds = false;
   if (UNIT[w] !== undefined && w !== 'oh' && ws[j + 1] === 'hundred') {
     val = UNIT[w] * 100; j += 2; got = true; hundreds = true;
@@ -93,7 +94,7 @@ export function tokenize(input) {
       i = j; continue;
     }
     const r = readNumber(ws, i);
-    if (r) { toks.push(numTok(String(r.val))); i = r.j; continue; }
+    if (r) { toks.push(numTok(r.raw || String(r.val))); i = r.j; continue; }
     if (WORDMAP[w]) toks.push(Object.assign({}, WORDMAP[w]));
     i++;
   }
