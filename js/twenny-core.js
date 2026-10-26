@@ -3,6 +3,10 @@
 // parseFix(text, assumeNW) turns spoken or typed coordinates in DD, DDM or DMS
 // (digits or English number words) into {state:'ok', lat, lon, fmt, notes}.
 // Other states: 'empty', 'partial' (only one coordinate heard), 'error' (with msg).
+// Tests live in test/parser.test.js.
+
+import {LANDMARKS} from '../data/landmarks.js';
+export {LANDMARKS};
 
 const UNIT = {zero:0,oh:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9};
 const TEEN = {ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19};
@@ -239,20 +243,6 @@ export function parseFix(input, assumeNW = true) {
 
 /* ---------- geo helpers ---------- */
 
-// Approximate positions, entered from memory. Verify each one before trusting it at work.
-export const LANDMARKS = [
-  {name: 'Mission Beach (Belmont Park)', lat: 32.7708, lon: -117.2525},
-  {name: 'Ocean Beach Pier', lat: 32.7493, lon: -117.2551},
-  {name: 'Sunset Cliffs', lat: 32.7186, lon: -117.2557},
-  {name: 'Ballast Point', lat: 32.6869, lon: -117.2333},
-  {name: 'Point Loma Lighthouse', lat: 32.6654, lon: -117.2420},
-  {name: 'Hotel del Coronado', lat: 32.6807, lon: -117.1785},
-  {name: 'Silver Strand State Beach', lat: 32.6345, lon: -117.1431},
-  {name: 'Imperial Beach Pier', lat: 32.5794, lon: -117.1339},
-  {name: 'Tijuana River mouth', lat: 32.5520, lon: -117.1270},
-  {name: 'Border Field', lat: 32.5343, lon: -117.1236}
-];
-
 const RAD = Math.PI / 180;
 
 export function distNm(a, b) {
@@ -295,21 +285,3 @@ export function toDMS(v, isLat) {
   return d + '° ' + pad(m, 2) + '′ ' + pad(s.toFixed(1), 4) + '″ ' + h;
 }
 
-/* ---------- known-good cases (turn these into unit tests) ---------- */
-export const TEST_CASES = [
-  ['32 degrees 34.5 minutes north 117 degrees 8.4 minutes west', 32.575, -117.14],
-  ['32.6795, -117.1840', 32.6795, -117.184],
-  ['32°39\'10"N 117°15\'05"W', 32.652778, -117.251389],
-  ['thirty two thirty seven point two, one seventeen oh nine point one', 32.62, -117.151667],
-  ['N 32 40.77 W 117 11.04', 32.6795, -117.184],
-  ['32 40 52 117 10 44', 32.681111, -117.178889],
-  ['latitude 32.68 longitude -117.18', 32.68, -117.18],
-  ['117.18 W 32.68 N', 32.68, -117.18],
-  ['32.68 117.18', 32.68, -117.18],
-  ['32-40.5N 117-08.4W', 32.675, -117.14],
-  ['32° 34.500′ N   117° 08.400′ W', 32.575, -117.14],
-  ['thirty two degrees forty minutes fifty two seconds north one hundred seventeen degrees ten minutes forty four seconds west', 32.681111, -117.178889],
-  ['32 34 point 7 6 north 117 8 point 0 3 west', 32.579333, -117.133833],
-  ['32 41.7 1:17 10.5', 32.695, -117.175]
-];
-// '32 40.5 north' should return state 'partial'.

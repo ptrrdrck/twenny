@@ -1,0 +1,52 @@
+/* Twenny theme: fonts and every color token, from STYLE.md (Nado Waves family).
+   Light is the default. Dark follows the system; data-theme="light"|"dark" on <html> forces one.
+   Components and layout live in app.css and only use the tokens below. */
+
+@font-face{font-family:"Archivo";font-style:normal;font-weight:400 700;font-display:swap;
+  src:url(../fonts/archivo-latin-wght-normal.woff2) format("woff2-variations"),url(../fonts/archivo-latin-wght-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-style:normal;font-weight:500;font-display:swap;src:url(../fonts/barlow-condensed-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-style:normal;font-weight:600;font-display:swap;src:url(../fonts/barlow-condensed-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-style:normal;font-weight:700;font-display:swap;src:url(../fonts/barlow-condensed-latin-700-normal.woff2) format("woff2")}
+
+:root{
+  --paper:#EAEEEC; --card:#F6F8F7; --ink:#16232B; --soft:#53656E; --faint:#7C8C93;
+  --line:#CBD5D1; --line-strong:#AFBDB8;
+  --surf:#0B7A8C; --surf-ink:#FFFFFF; --surf-wash:#DCEAEC;
+  --sand:#D9C9A8; --sand-deep:#B9A47C;
+  --signal:#C2462D; --signal-wash:#F5DED8;
+  --ok:#2F7D4F;
+  --shadow:0 1px 2px rgba(22,35,43,.08), 0 4px 14px rgba(22,35,43,.06);
+  --r:10px;
+  /* Twenny-only: the fix (map pin, talk button while listening) */
+  --pin:#E0A800; --pin-ink:#16232B;
+  /* Twenny-only: OSM tiles are bright; dim them in dark mode */
+  --tile-filter:none;
+  /* Twenny-only layout: height of the sticky talk bar */
+  --dock-h:94px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1A20; --card:#152630; --ink:#E4ECE9; --soft:#9DB0B7; --faint:#7A8D95;
+    --line:#283C46; --line-strong:#3A525E;
+    --surf:#3FB6C6; --surf-ink:#06222A; --surf-wash:#12333B;
+    --sand:#8C7A55; --sand-deep:#A8935F;
+    --signal:#E8705A; --signal-wash:#3A1F1A;
+    --ok:#5FBF86;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3);
+    --pin:#FFC61A; --pin-ink:#06222A;
+    --tile-filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1A20; --card:#152630; --ink:#E4ECE9; --soft:#9DB0B7; --faint:#7A8D95;
+  --line:#283C46; --line-strong:#3A525E;
+  --surf:#3FB6C6; --surf-ink:#06222A; --surf-wash:#12333B;
+  --sand:#8C7A55; --sand-deep:#A8935F;
+  --signal:#E8705A; --signal-wash:#3A1F1A;
+  --ok:#5FBF86;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3);
+  --pin:#FFC61A; --pin-ink:#06222A;
+  --tile-filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.6);
+  color-scheme: dark;
+}
