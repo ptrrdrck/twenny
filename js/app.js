@@ -2,7 +2,7 @@
 
 import {parseFix, LANDMARKS} from './twenny-core.js';
 import {nearest, fromYou, farWarning, formats, copyText, mapLinks, addRecent} from './fix.js';
-import {speechSupported, createListener} from './speech.js';
+import {speechSupported, listen} from './speech.js';
 import {createMap} from './map.js';
 import {registerSW} from './pwa.js';
 
@@ -24,8 +24,7 @@ const S = {
   recents: store.get('twenny.recent', []),
   listening: false,
   voice: speechSupported,
-  prefix: '',           // kept text when continuing a partial fix
-  voiceErr: ''          // last speech error, shown if nothing was heard
+  prefix: ''            // kept text when continuing a partial fix
 };
 
 const map = createMap($('map'), LANDMARKS);
@@ -153,7 +152,18 @@ $('recentClear').addEventListener('click', () => {
 /* ---------- talking ---------- */
 
 const talk = $('talk');
-let listener = null;
+
+// Browsers end a recognition session on their own: after a few seconds of
+// silence, at a pause, or right after the mic prompt. Until the guard taps
+// stop or a whole fix is heard, Twenny starts a new one and keeps adding to
+// the text, giving up after this long with nothing new heard, or after this
+// many sessions in a row that heard nothing (a browser that ends every session
+// at once would otherwise restart in a tight loop, beeping on Android).
+const KEEP_LISTENING_MS = 20000;
+const MAX_EMPTY_SESSIONS = 4;
+let session = null;   // {mic, fromTap, stopping, error, heard}: the one listening now
+let heardAt = 0;      // when something was last heard (or the tap)
+let emptyRuns = 0;    // sessions in a row that heard nothing
 
 function setListening(on) {
   S.listening = on;
@@ -168,52 +178,86 @@ function useFallback(note) {
   $('fallbackNote').hidden = false;
 }
 
+// Start a session; false if the browser refused outright.
+function openMic(fromTap) {
+  const s = {fromTap, stopping: false, error: '', heard: false};
+  try {
+    s.mic = listen({
+      onText(t) {
+        if (session !== s) return;
+        s.heard = true;
+        heardAt = Date.now();
+        heard.value = S.prefix ? S.prefix + ' ' + t : t;
+        update(heard.value);
+      },
+      onError(code) { if (session === s) s.error = code; },
+      onEnd() { if (session === s) micEnded(s); }
+    });
+  } catch (e) {
+    return false;
+  }
+  session = s;
+  return true;
+}
+
+function micEnded(s) {
+  session = null;
+  emptyRuns = s.heard ? 0 : emptyRuns + 1;
+  const e = s.error;
+  const refused = e === 'not-allowed' || e === 'service-not-allowed';
+  if (refused && s.fromTap) {
+    useFallback('Voice is blocked here. Tap the box and use the mic on the keyboard, or allow the microphone for this site.');
+    return;
+  }
+  const state = parseFix(heard.value, S.assumeNW).state;
+  const carryOn = !s.stopping && S.listening && state !== 'ok' && !refused &&
+    e !== 'network' && e !== 'audio-capture' &&
+    Date.now() - heardAt < KEEP_LISTENING_MS && emptyRuns < MAX_EMPTY_SESSIONS;
+  if (carryOn) {
+    S.prefix = heard.value.trim();
+    if (openMic(false)) return;
+  }
+  setListening(false);
+  update(heard.value);
+  if (state !== 'ok') {
+    const why = e === 'network' ? 'Voice needs a connection. Tap the box and use the keyboard mic.'
+      : e === 'audio-capture' ? 'No microphone found.'
+      : !heard.value.trim() ? 'Didn’t hear anything. Tap and talk to try again.'
+      : !s.stopping && state === 'partial' ? 'Stopped listening. Tap and talk to say the rest.'
+      : '';
+    if (why) setStatus('off', why);
+  }
+  commit();
+}
+
 // Cancel without saving (Clear, picking a recent fix). Tapping the talk button
 // instead ends normally and saves the fix.
 function stopListening() {
-  if (!S.listening) return;
+  if (!session) return;
+  session.mic.abort();
+  session = null;
   setListening(false);
-  listener.stop();
 }
 
-if (S.voice) {
-  listener = createListener({
-    onText(t) {
-      heard.value = S.prefix ? S.prefix + ' ' + t : t;
-      update(heard.value);
-    },
-    onEnd() {
-      if (!S.listening) return;
-      setListening(false);
-      update(heard.value);
-      if (S.voiceErr && !heard.value.trim()) setStatus('off', S.voiceErr);
-      commit();
-    },
-    onError(code) {
-      if (code === 'no-speech' || code === 'aborted') return;
-      if (code === 'not-allowed' || code === 'service-not-allowed') {
-        useFallback('Voice is blocked here. Tap the box and use the mic on the keyboard, or allow the microphone for this site.');
-        return;
-      }
-      S.voiceErr = code === 'network' ? 'Voice needs a connection. Tap the box and use the keyboard mic.'
-        : code === 'audio-capture' ? 'No microphone found.'
-        : 'Voice stopped (' + code + '). Tap to try again.';
-      setStatus('off', S.voiceErr);
-    }
-  });
-} else {
-  useFallback('Voice input isn’t available in this browser. Tap the box, then the mic on the keyboard.');
-}
+if (!S.voice) useFallback('Voice input isn’t available in this browser. Tap the box, then the mic on the keyboard.');
 
 talk.addEventListener('click', () => {
   if (!S.voice) { heard.focus(); return; }
-  if (S.listening) { listener.stop(); return; }
+  if (S.listening && session) {
+    // Done talking: let the browser hand over its final words, then save.
+    session.stopping = true;
+    setListening(false);
+    session.mic.stop();
+    return;
+  }
+  if (session) { session.mic.abort(); session = null; }   // one still winding down
   // Halfway through a fix ("heard the latitude"): keep it and listen for the rest.
   const keep = parseFix(heard.value, S.assumeNW).state === 'partial';
   S.prefix = keep ? heard.value.trim() : '';
   if (!keep) heard.value = '';
-  S.voiceErr = '';
-  try { listener.start(); } catch (e) { return; }
+  heardAt = Date.now();
+  emptyRuns = 0;
+  if (!openMic(true)) { setStatus('off', 'Couldn’t start the mic. Tap and talk again.'); return; }
   setListening(true);
   update(heard.value);
 });
