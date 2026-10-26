@@ -2,7 +2,9 @@
 // or Twenny breaks the first time a guard opens it without signal.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync, existsSync} from 'node:fs';
+import {readFileSync, existsSync, readdirSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {Script} from 'node:vm';
 import {posix} from 'node:path';
 
@@ -49,4 +51,13 @@ test('every local file the app loads is in ASSETS', () => {
 test('Pages serves files as-is', () => {
   // Without .nojekyll, GitHub Pages runs Jekyll over the repo first.
   assert.ok(existsSync(new URL('.nojekyll', ROOT)));
+});
+
+test('every app script parses', () => {
+  // The app's own modules aren't all unit-tested; a syntax error in one
+  // (a duplicate declaration, say) would still break the whole page.
+  for (const f of readdirSync(new URL('js/', ROOT)).filter(f => f.endsWith('.js'))) {
+    const r = spawnSync(process.execPath, ['--check', fileURLToPath(new URL('js/' + f, ROOT))], {encoding: 'utf8'});
+    assert.equal(r.status, 0, `js/${f}: ${r.stderr}`);
+  }
 });
