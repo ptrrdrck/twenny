@@ -207,9 +207,10 @@ function useFallback(note) {
 
 // Start a session; false if the browser refused outright.
 function openMic(fromTap) {
-  const s = {fromTap, stopping: false, error: '', heard: false, audio: false, timers: []};
+  const s = {fromTap, stopping: false, error: '', heard: false, audio: false, timers: [], n: ++sessionCount};
   try {
     s.mic = listen({
+      onEvent(name) { logVoice(`#${s.n} ${name}`); },
       onAudio() { s.audio = gotAudio = true; },
       onText(t) {
         if (session !== s) return;
@@ -222,8 +223,10 @@ function openMic(fromTap) {
       onEnd() { if (session === s) micEnded(s); }
     });
   } catch (e) {
+    logVoice(`#${s.n} start threw ${e && e.name}`);
     return false;
   }
+  logVoice(`#${s.n} started` + (fromTap ? '' : ' (no tap)'));
   session = s;
   if (s.mic.audioEvents) s.timers.push(setTimeout(() => { if (!s.audio) stalled(s); }, STALL_NO_AUDIO_MS));
   s.timers.push(setTimeout(() => { if (!s.heard) stalled(s); }, STALL_NO_WORDS_MS));
@@ -236,6 +239,7 @@ function stalled(s) {
   if (session !== s) return;
   s.mic.abort();
   if (!s.error) s.error = s.audio || s.stopping ? 'stalled' : 'no-audio';
+  logVoice(`#${s.n} dropped: ${s.error}`);
   micEnded(s);
 }
 
@@ -256,9 +260,11 @@ function micEnded(s) {
   const carryOn = !s.stopping && S.listening && !complete && !refused &&
     e !== 'network' && e !== 'audio-capture' &&
     Date.now() - heardAt < KEEP_LISTENING_MS && emptyRuns < MAX_EMPTY_SESSIONS;
+  logVoice(`#${s.n} over` + (e ? ` (${e})` : '') + (carryOn ? ', listening again' : ''));
   if (carryOn) {
     S.prefix = heard.value.trim();
-    if (openMic(false)) return;
+    startSession(false);
+    return;
   }
   setListening(false);
   update(heard.value);   // now not listening, so this takes the second look too
@@ -290,8 +296,9 @@ if (!S.voice) useFallback('Voice input isn’t available in this browser. Tap th
 
 talk.addEventListener('click', () => {
   if (!S.voice) { heard.focus(); return; }
-  if (micAsking) { stopListening(); update(heard.value); return; }   // tapped again at the mic prompt
+  if (micAsking) { logVoice('tap: cancel'); stopListening(); update(heard.value); commit(); return; }   // tapped while the mic was being asked for
   if (S.listening && session) {
+    logVoice('tap: stop');
     // Done talking: let the browser hand over its final words, then save.
     const s = session;
     s.stopping = true;
@@ -308,31 +315,70 @@ talk.addEventListener('click', () => {
   heardAt = Date.now();
   emptyRuns = 0;
   gotAudio = false;
-  if (!micReady) {
-    // First time this page load: ask for the mic on its own, then listen.
-    micAsking = true;
-    setListening(true);
-    setStatus('pend', 'Allow the microphone when asked');
-    askForMic().then(() => {
-      micReady = true;
-      if (!micAsking) return;
-      micAsking = false;
-      heardAt = Date.now();
-      if (!openMic(false)) { setListening(false); setStatus('off', 'Couldn’t start the mic. Tap and talk again.'); return; }
-      update(heard.value);
-    }, err => {
-      if (!micAsking) return;
-      micAsking = false;
-      setListening(false);
-      if (err && err.name === 'NotAllowedError') {
-        useFallback('The microphone is blocked for this site. Tap the box and use the mic on the keyboard, or allow the microphone and reload.');
-      } else setStatus('off', 'Couldn’t start the mic. Tap and talk again.');
-    });
-    return;
-  }
-  if (!openMic(true)) { setStatus('off', 'Couldn’t start the mic. Tap and talk again.'); return; }
+  logStart();
   setListening(true);
   update(heard.value);
+  startSession(true);
+});
+
+// Every listen starts the same way: get the microphone (the prompt shows the
+// first time a page load asks; after that it's instant and silent), then start
+// a recognizer. On an iPhone, one started without this can sit on "Listening"
+// with no audio: the first listen after a load worked and the next didn't.
+function startSession(fromTap) {
+  const prompting = !micReady;
+  micAsking = true;
+  if (prompting) setStatus('pend', 'Allow the microphone when asked');
+  logVoice('mic: asking' + (prompting ? ' (prompt)' : ''));
+  askForMic().then(() => {
+    micReady = true;
+    logVoice('mic: ok');
+    if (!micAsking) return;          // cancelled meanwhile
+    micAsking = false;
+    if (openMic(fromTap && !prompting)) { update(heard.value); return; }
+    setListening(false);
+    setStatus('off', 'Couldn’t start the mic. Tap and talk again.');
+    commit();
+  }, err => {
+    logVoice('mic: ' + (err && err.name));
+    if (!micAsking) return;
+    micAsking = false;
+    setListening(false);
+    if (err && err.name === 'NotAllowedError') {
+      useFallback('The microphone is blocked for this site. Tap the box and use the mic on the keyboard, or allow the microphone and reload.');
+    } else setStatus('off', 'Couldn’t start the mic. Tap and talk again.');
+    commit();
+  });
+}
+
+const device = {standalone: navigator.standalone === true || matchMedia('(display-mode: standalone)').matches};
+
+/* ---------- voice log (footer): what the browser reported, for tracking down mic trouble ---------- */
+
+let sessionCount = 0, logT0 = performance.now();
+const logLines = [];
+function logVoice(msg) {
+  logLines.push(((performance.now() - logT0) / 1000).toFixed(1).padStart(6) + 's  ' + msg);
+  if (logLines.length > 80) logLines.shift();
+  if (!$('vlogBox').hidden) $('vlog').textContent = logLines.join('\n');
+}
+function logStart() {
+  logT0 = performance.now();
+  logLines.push('---');
+  logVoice('tap: listen');
+}
+$('vlogBtn').addEventListener('click', () => {
+  const box = $('vlogBox');
+  box.hidden = !box.hidden;
+  $('vlogBtn').textContent = box.hidden ? 'Voice log' : 'Hide voice log';
+  if (!box.hidden) {
+    $('vlog').textContent = logLines.join('\n') || 'Nothing yet. Tap and talk, then look here.';
+    box.scrollIntoView({block: 'nearest'});
+  }
+});
+$('vlogCopy').addEventListener('click', async () => {
+  const text = [navigator.userAgent, 'home screen: ' + device.standalone, ...logLines].join('\n');
+  try { await navigator.clipboard.writeText(text); toast('Voice log copied'); } catch (e) { toast('Couldn’t copy; take a screenshot instead'); }
 });
 
 /* ---------- typing ---------- */
@@ -344,6 +390,7 @@ heard.addEventListener('keydown', e => {
 });
 
 $('clearBtn').addEventListener('click', () => {
+  logVoice('clear');
   stopListening();
   heard.value = '';
   update('');

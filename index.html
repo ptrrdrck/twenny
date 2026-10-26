@@ -79,9 +79,14 @@
       <option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option>
     </select></label>
     <span>Version <span id="ver">not saved yet</span></span>
+    <button class="link-btn vlog-btn" id="vlogBtn" type="button">Voice log</button>
     <span class="links-note">Map © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors.
       Landmark positions are approximate.</span>
   </nav>
+  <section class="vlog-box" id="vlogBox" hidden aria-label="Voice log">
+    <pre class="vlog" id="vlog"></pre>
+    <button class="btn small" id="vlogCopy" type="button">Copy log</button>
+  </section>
 </main>
 
 <div class="dock">

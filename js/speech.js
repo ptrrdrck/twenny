@@ -34,15 +34,19 @@ export async function askForMic() {
 //   onError(code):      the SpeechRecognition error code ('no-speech', 'not-allowed', ...)
 //   onEnd():            once, when the session is over (not after abort)
 //   onAudio():          when the microphone is actually feeding it
+//   onEvent(name):      every event the recognizer reports, for the voice log
 // The returned audioEvents is false where the browser doesn't report that.
-export function listen({onText, onError, onEnd, onAudio = () => {}}) {
+export function listen({onText, onError, onEnd, onAudio = () => {}, onEvent = () => {}}) {
   const rec = new SR();
   rec.lang = 'en-US';
   rec.continuous = true;
   rec.interimResults = true;
   rec.maxAlternatives = 1;
   let over = false;
-  const end = () => { if (!over) { over = true; onEnd(); } };
+  const end = () => { onEvent('end'); if (!over) { over = true; onEnd(); } };
+  for (const name of ['start', 'soundstart', 'speechstart', 'speechend', 'soundend', 'audioend', 'nomatch']) {
+    rec['on' + name] = () => onEvent(name);
+  }
   rec.onresult = e => {
     if (over) return;
     const finals = [], interim = [];
@@ -50,10 +54,12 @@ export function listen({onText, onError, onEnd, onAudio = () => {}}) {
       const r = e.results[i];
       (r.isFinal ? finals : interim).push(r[0].transcript);
     }
-    onText(joinResults([...finals, ...interim], cumulative));
+    const text = joinResults([...finals, ...interim], cumulative);
+    onEvent('result "' + text + '"' + (interim.length ? '' : ' (final)'));
+    onText(text);
   };
-  rec.onerror = e => { if (!over) onError(e.error); };
-  rec.onaudiostart = () => { if (!over) onAudio(); };
+  rec.onerror = e => { onEvent('error ' + e.error); if (!over) onError(e.error); };
+  rec.onaudiostart = () => { onEvent('audiostart'); if (!over) onAudio(); };
   rec.onend = end;
   rec.start();
   return {
