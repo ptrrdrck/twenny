@@ -1,4 +1,5 @@
-/* Twenny theme: fonts and every color token, from STYLE.md (Nado Waves family).
+/* Twenny theme: fonts and every color token, from the Nado Waves forecast page
+   (github.com/ptrrdrck/nado-waves-forecast, index.html). STYLE.md describes them.
    Light is the default. Dark follows the system; data-theme="light"|"dark" on <html> forces one.
    Components and layout live in app.css and only use the tokens below. */
 
@@ -11,26 +12,28 @@
 :root{
   --paper:#EAEEEC; --card:#F6F8F7; --ink:#16232B; --soft:#53656E; --faint:#7C8C93;
   --line:#CBD5D1; --line-strong:#AFBDB8;
-  --surf:#0B7A8C; --surf-ink:#FFFFFF; --surf-wash:#DCEAEC;
+  --surf:#1565C0; --surf-ink:#FFFFFF; --surf-wash:#DCE7F7;
   --sand:#D9C9A8; --sand-deep:#B9A47C;
-  --signal:#C2462D; --signal-wash:#F5DED8;
+  --signal:#C62828; --signal-wash:#F9DEDE;
   --ok:#2F7D4F;
+  /* The status dot is dark mode's green and red on both themes, as on the forecast page. */
+  --dot-ok:#5FBF86; --dot-over:#FF6B6B;
   --shadow:0 1px 2px rgba(22,35,43,.08), 0 4px 14px rgba(22,35,43,.06);
   --r:10px;
   /* Twenny-only: the fix (map pin, talk button while listening) */
   --pin:#E0A800; --pin-ink:#16232B;
-  /* Twenny-only: OSM tiles are bright; dim them in dark mode */
+  /* Twenny-only: OSM tiles are bright; dimmed in dark mode */
   --tile-filter:none;
   /* Twenny-only layout: height of the sticky talk bar */
-  --dock-h:94px;
+  --dock-h:88px;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --paper:#0E1A20; --card:#152630; --ink:#E4ECE9; --soft:#9DB0B7; --faint:#7A8D95;
     --line:#283C46; --line-strong:#3A525E;
-    --surf:#3FB6C6; --surf-ink:#06222A; --surf-wash:#12333B;
+    --surf:#6FB3F7; --surf-ink:#08203A; --surf-wash:#12283D;
     --sand:#8C7A55; --sand-deep:#A8935F;
-    --signal:#E8705A; --signal-wash:#3A1F1A;
+    --signal:#FF6B6B; --signal-wash:#3A1C1C;
     --ok:#5FBF86;
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3);
     --pin:#FFC61A; --pin-ink:#06222A;
@@ -41,9 +44,9 @@
 :root[data-theme="dark"]{
   --paper:#0E1A20; --card:#152630; --ink:#E4ECE9; --soft:#9DB0B7; --faint:#7A8D95;
   --line:#283C46; --line-strong:#3A525E;
-  --surf:#3FB6C6; --surf-ink:#06222A; --surf-wash:#12333B;
+  --surf:#6FB3F7; --surf-ink:#08203A; --surf-wash:#12283D;
   --sand:#8C7A55; --sand-deep:#A8935F;
-  --signal:#E8705A; --signal-wash:#3A1F1A;
+  --signal:#FF6B6B; --signal-wash:#3A1C1C;
   --ok:#5FBF86;
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3);
   --pin:#FFC61A; --pin-ink:#06222A;
