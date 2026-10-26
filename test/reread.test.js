@@ -13,6 +13,12 @@ const SLIPS = [
   ['digits read one at a time', '3 2 3 4.5 1 1 7 0 8.4'],
   ['no break, both packed', '3234.5117 8.4'],
 ];
+
+// Reported on the phone: "32 39.613" then "117 08.168", run together.
+test('reread: minutes run into the longitude, no space', () => {
+  assert.ok(near(reread('32 3911708'), 32.65, -117 - 8 / 60));
+  assert.ok(near(reread('32 39.61311708'), 32 + 39.613 / 60, -117 - 8 / 60));
+});
 for (const [what, text] of SLIPS) {
   test(`reread: ${what}: ${text}`, () => {
     const r = reread(text);

@@ -60,6 +60,9 @@ function update(text) {
     renderFix(false);
     return;
   }
+  // Not a whole fix near San Diego, and nobody is mid-sentence (typing, or the
+  // guard has tapped stop): take the second look at the whole thing now.
+  if (!S.listening && r.state !== 'empty' && !(r.state === 'ok' && !farWarning(r)) && recheck()) return;
   if (r.state === 'ok') {
     setStatus('on', 'Fix: ' + r.fmt.toLowerCase());
     const moved = !S.fix || S.fix.lat !== r.lat || S.fix.lon !== r.lon;
@@ -96,17 +99,15 @@ function renderFix(pan) {
   if (pan) map.showFix(fix, near, !!warn);
 }
 
-// The second look at everything heard, once the guard stops talking or finishes
-// typing, when the live reading couldn't place it near San Diego: reread.js
-// tries the usual speech-to-text slips. True if it found a reading.
+// The second look (reread.js) at the whole text: the usual speech-to-text
+// slips, kept only if one lands near San Diego. True if it found a reading.
 function recheck() {
-  const r = parseFix(heard.value, S.assumeNW);
-  if (r.state === 'ok' && !farWarning(r)) return false;
   const rr = reread(heard.value, S.assumeNW);
   if (!rr) return false;
+  const moved = !S.fix || S.fix.lat !== rr.lat || S.fix.lon !== rr.lon;
   S.fix = {lat: rr.lat, lon: rr.lon, fmt: rr.fmt, notes: [...rr.notes, 'Re-read'], text: heard.value.trim()};
   setStatus('on', rr.unsure ? 'Re-read, but it could be read more than one way. Check the fix.' : 'Re-read the whole thing. Check the fix.');
-  renderFix(true);
+  renderFix(moved);
   return true;
 }
 
@@ -236,8 +237,8 @@ function micEnded(s) {
     if (openMic(false)) return;
   }
   setListening(false);
-  update(heard.value);
-  const rescued = recheck();
+  update(heard.value);   // now not listening, so this takes the second look too
+  const rescued = !!(S.fix && S.fix.notes.includes('Re-read'));
   if (!complete && !rescued && state !== 'ok') {
     const why = e === 'network' ? 'Voice needs a connection. Tap the box and use the keyboard mic.'
       : e === 'audio-capture' ? 'No microphone found.'
@@ -284,7 +285,7 @@ talk.addEventListener('click', () => {
 /* ---------- typing ---------- */
 
 heard.addEventListener('input', () => update(heard.value));
-heard.addEventListener('change', () => { recheck(); commit(); });
+heard.addEventListener('change', commit);
 heard.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); heard.blur(); }
 });

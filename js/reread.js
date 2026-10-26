@@ -4,6 +4,7 @@
 // makes when no direction is said between the two coordinates:
 //   - one number written as two ("1 17" = 117)  "32 34.5 1 17 8.4"
 //   - a decimal run into the next number        "32 34.5117 8.4"
+//   - two whole numbers run together            "32 3911708" (39, 117 08)
 //   - digits read one at a time                 "3 2 3 4.5 1 1 7 0 8.4"
 // along with a break between the coordinates where the live reading didn't
 // put one, and keeps a reading only if it lands near San Diego. Fewest changes win; if
@@ -31,6 +32,12 @@ function changes(toks) {
       const [whole, frac] = t.raw.split('.');
       for (let j = 1; j < frac.length; j++) {
         out.push(swap(toks, i, 1, numTok(whole + '.' + frac.slice(0, j)), numTok(frac.slice(j))));
+      }
+    }
+    if (isNum(t) && t.v > 180) {                                             // whole numbers ran on
+      const [whole, frac] = t.raw.split('.');
+      for (let j = 1; j < whole.length; j++) {
+        out.push(swap(toks, i, 1, numTok(whole.slice(0, j)), numTok(whole.slice(j) + (frac ? '.' + frac : ''))));
       }
     }
   });
