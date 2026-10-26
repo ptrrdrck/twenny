@@ -6,8 +6,8 @@
 // A quick way to get a number: long-press the spot in Google Maps and copy
 // the "32.xxxxx, -117.xxxxx" it shows.
 //
-// APPROXIMATE: entered from memory. Verify each one before trusting it at work,
-// then add "verified: true" so it's clear which ones are checked.
+// APPROXIMATE: entered from memory. Verify each one before trusting it at work.
+// `npm test` checks every entry is near San Diego (catches a dropped minus sign).
 
 export const LANDMARKS = [
   {name: 'Mission Beach (Belmont Park)', lat: 32.7708, lon: -117.2525},
