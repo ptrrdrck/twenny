@@ -10,6 +10,22 @@ export const speechSupported = typeof SR === 'function';
 // Chrome on Android repeats earlier words in each result; see joinResults.
 const cumulative = /Android/i.test(navigator.userAgent);
 
+// Has this page been given the microphone? 'granted' | 'prompt' | 'denied' | 'unknown'.
+export async function micPermission() {
+  try { return (await navigator.permissions.query({name: 'microphone'})).state; } catch (e) { return 'unknown'; }
+}
+
+// Ask for the microphone on its own, before recognition starts. On an iPhone,
+// a recognizer whose start() raised the mic prompt can stay stuck after Allow:
+// it never gets audio and never ends. With the mic already granted, it starts
+// clean. Resolves when allowed; rejects with the browser's error (NotAllowedError
+// when refused). Nothing is recorded: the tracks are stopped straight away.
+export async function askForMic() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+  const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+  stream.getTracks().forEach(t => t.stop());
+}
+
 // Starts one listening session and returns {stop, abort}. A new recognizer every
 // time: reusing one is what browsers (Safari especially) get wrong, and a tap
 // that lands while the last session is still shutting down can't restart it.
@@ -17,7 +33,9 @@ const cumulative = /Android/i.test(navigator.userAgent);
 //   onText(transcript): every interim and final result of this session
 //   onError(code):      the SpeechRecognition error code ('no-speech', 'not-allowed', ...)
 //   onEnd():            once, when the session is over (not after abort)
-export function listen({onText, onError, onEnd}) {
+//   onAudio():          when the microphone is actually feeding it
+// The returned audioEvents is false where the browser doesn't report that.
+export function listen({onText, onError, onEnd, onAudio = () => {}}) {
   const rec = new SR();
   rec.lang = 'en-US';
   rec.continuous = true;
@@ -35,9 +53,11 @@ export function listen({onText, onError, onEnd}) {
     onText(joinResults([...finals, ...interim], cumulative));
   };
   rec.onerror = e => { if (!over) onError(e.error); };
+  rec.onaudiostart = () => { if (!over) onAudio(); };
   rec.onend = end;
   rec.start();
   return {
+    audioEvents: 'onaudiostart' in rec,
     // Finish: the browser delivers its final words, then onEnd.
     stop() { try { rec.stop(); } catch (e) { end(); } },
     // Drop it: no more callbacks.

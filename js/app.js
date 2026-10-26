@@ -2,7 +2,7 @@
 
 import {parseFix, LANDMARKS} from './twenny-core.js';
 import {nearest, fromYou, farWarning, formats, copyText, mapLinks, addRecent} from './fix.js';
-import {speechSupported, listen} from './speech.js';
+import {speechSupported, listen, askForMic, micPermission} from './speech.js';
 import {createMap} from './map.js';
 import {registerSW} from './pwa.js';
 import {reread} from './reread.js';
@@ -177,9 +177,20 @@ const talk = $('talk');
 // at once would otherwise restart in a tight loop, beeping on Android).
 const KEEP_LISTENING_MS = 20000;
 const MAX_EMPTY_SESSIONS = 4;
-let session = null;   // {mic, fromTap, stopping, error, heard}: the one listening now
+// A session can also get stuck: on an iPhone, right after the mic prompt, it may
+// never get audio and never end. Drop it and start a fresh one if the mic hasn't
+// started feeding it by STALL_NO_AUDIO_MS, or nothing at all has come back by
+// STALL_NO_WORDS_MS (a healthy silent session ends itself before that).
+const STALL_NO_AUDIO_MS = 2500;
+const STALL_NO_WORDS_MS = 10000;
+const STOP_GRACE_MS = 1500;   // after tap-to-stop, wait this long for the final words
+let session = null;   // {mic, fromTap, stopping, error, heard, audio}: the one listening now
 let heardAt = 0;      // when something was last heard (or the tap)
 let emptyRuns = 0;    // sessions in a row that heard nothing
+let gotAudio = false; // any session since the tap got audio from the mic
+let micReady = false; // this page has the microphone (asked once per page load)
+let micAsking = false;   // waiting on the mic prompt
+micPermission().then(state => { if (state === 'granted') micReady = true; });
 
 function setListening(on) {
   S.listening = on;
@@ -196,9 +207,10 @@ function useFallback(note) {
 
 // Start a session; false if the browser refused outright.
 function openMic(fromTap) {
-  const s = {fromTap, stopping: false, error: '', heard: false};
+  const s = {fromTap, stopping: false, error: '', heard: false, audio: false, timers: []};
   try {
     s.mic = listen({
+      onAudio() { s.audio = gotAudio = true; },
       onText(t) {
         if (session !== s) return;
         s.heard = true;
@@ -213,11 +225,23 @@ function openMic(fromTap) {
     return false;
   }
   session = s;
+  if (s.mic.audioEvents) s.timers.push(setTimeout(() => { if (!s.audio) stalled(s); }, STALL_NO_AUDIO_MS));
+  s.timers.push(setTimeout(() => { if (!s.heard) stalled(s); }, STALL_NO_WORDS_MS));
   return true;
+}
+
+// A session that's stuck (or slow to finish after stop): drop it and carry on
+// as if it had ended.
+function stalled(s) {
+  if (session !== s) return;
+  s.mic.abort();
+  if (!s.error) s.error = s.audio || s.stopping ? 'stalled' : 'no-audio';
+  micEnded(s);
 }
 
 function micEnded(s) {
   session = null;
+  s.timers.forEach(clearTimeout);
   emptyRuns = s.heard ? 0 : emptyRuns + 1;
   const e = s.error;
   const refused = e === 'not-allowed' || e === 'service-not-allowed';
@@ -242,8 +266,10 @@ function micEnded(s) {
   if (!complete && !rescued && state !== 'ok') {
     const why = e === 'network' ? 'Voice needs a connection. Tap the box and use the keyboard mic.'
       : e === 'audio-capture' ? 'No microphone found.'
-      : !heard.value.trim() ? 'Didn’t hear anything. Tap and talk to try again.'
       : !s.stopping && state === 'partial' ? 'Stopped listening. Tap and talk to say the rest.'
+      : refused ? 'Voice recognition was refused. Tap and talk to try again.'
+      : !gotAudio && !heard.value.trim() ? 'The mic didn’t start. Tap and talk to try again.'
+      : !heard.value.trim() ? 'Didn’t hear anything. Tap and talk to try again.'
       : '';
     if (why) setStatus('off', why);
   }
@@ -253,6 +279,7 @@ function micEnded(s) {
 // Cancel without saving (Clear, picking a recent fix). Tapping the talk button
 // instead ends normally and saves the fix.
 function stopListening() {
+  if (micAsking) { micAsking = false; setListening(false); return; }
   if (!session) return;
   session.mic.abort();
   session = null;
@@ -263,11 +290,14 @@ if (!S.voice) useFallback('Voice input isn’t available in this browser. Tap th
 
 talk.addEventListener('click', () => {
   if (!S.voice) { heard.focus(); return; }
+  if (micAsking) { stopListening(); update(heard.value); return; }   // tapped again at the mic prompt
   if (S.listening && session) {
     // Done talking: let the browser hand over its final words, then save.
-    session.stopping = true;
+    const s = session;
+    s.stopping = true;
     setListening(false);
-    session.mic.stop();
+    s.mic.stop();
+    s.timers.push(setTimeout(() => stalled(s), STOP_GRACE_MS));
     return;
   }
   if (session) { session.mic.abort(); session = null; }   // one still winding down
@@ -277,6 +307,29 @@ talk.addEventListener('click', () => {
   if (!keep) heard.value = '';
   heardAt = Date.now();
   emptyRuns = 0;
+  gotAudio = false;
+  if (!micReady) {
+    // First time this page load: ask for the mic on its own, then listen.
+    micAsking = true;
+    setListening(true);
+    setStatus('pend', 'Allow the microphone when asked');
+    askForMic().then(() => {
+      micReady = true;
+      if (!micAsking) return;
+      micAsking = false;
+      heardAt = Date.now();
+      if (!openMic(false)) { setListening(false); setStatus('off', 'Couldn’t start the mic. Tap and talk again.'); return; }
+      update(heard.value);
+    }, err => {
+      if (!micAsking) return;
+      micAsking = false;
+      setListening(false);
+      if (err && err.name === 'NotAllowedError') {
+        useFallback('The microphone is blocked for this site. Tap the box and use the mic on the keyboard, or allow the microphone and reload.');
+      } else setStatus('off', 'Couldn’t start the mic. Tap and talk again.');
+    });
+    return;
+  }
   if (!openMic(true)) { setStatus('off', 'Couldn’t start the mic. Tap and talk again.'); return; }
   setListening(true);
   update(heard.value);
