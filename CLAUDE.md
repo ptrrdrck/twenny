@@ -30,3 +30,5 @@ no build step for development, no npm dependencies.
   `test/build.test.js` fails if the page loads something that isn't precached.
 - Never `skipWaiting()` on install: new versions wait for the "tap to refresh" prompt.
 - Deploys: `.github/workflows/pages.yml` on push to master.
+- Pull requests: never add Claude/AI credit lines (no "Generated with Claude Code",
+  no session links) to PR titles or descriptions.
