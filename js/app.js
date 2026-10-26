@@ -368,9 +368,10 @@ setListening(false);
 renderRecents();
 setRecentOpen(store.get('twenny.recentOpen', false));
 update('');
-// Location was on last time: pick it up again, but only if it's still allowed,
-// so opening the app never pops a permission prompt the guard didn't ask for.
+// Location was on last time (the guard tapped Use my location and didn't Stop):
+// turn it back on. If the browser still remembers the Allow this is silent;
+// if it doesn't, its own prompt shows. A refusal is respected: nothing is asked.
 if (store.get('twenny.loc', false)) {
-  permissionState().then(state => { if (state === 'granted' || state === 'unknown') startLoc(); });
+  permissionState().then(state => { if (state !== 'denied') startLoc(); });
 }
 addEventListener('load', () => map.resize());
