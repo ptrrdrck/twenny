@@ -5,6 +5,7 @@ import {nearest, fromYou, farWarning, formats, copyText, mapLinks, addRecent} fr
 import {speechSupported, createListener} from './speech.js';
 import {createMap} from './map.js';
 import {registerSW} from './pwa.js';
+import {permissionState, onPermissionChange, blockedHelp, unavailableHelp} from './locate.js';
 
 const $ = id => document.getElementById(id);
 
@@ -280,21 +281,49 @@ function setLoc(kind, text) {
   $('locBtn').textContent = watchId === null ? 'Use my location' : 'Stop';
 }
 
+const device = {
+  ua: navigator.userAgent,
+  touchPoints: navigator.maxTouchPoints,
+  standalone: navigator.standalone === true || matchMedia('(display-mode: standalone)').matches
+};
+
+// The note under the header when location can't be had, with Try again.
+function showLocHelp(text) {
+  $('locHelpText').textContent = text;
+  $('locHelp').hidden = false;
+}
+const hideLocHelp = () => { $('locHelp').hidden = true; };
+
+// Called straight from the tap: if location hasn't been allowed yet, this is
+// where the browser shows its permission prompt, as it does for the mic.
 function startLoc() {
-  if (!('geolocation' in navigator)) { setLoc('off', 'No location on this device'); return; }
+  hideLocHelp();
+  if (!('geolocation' in navigator)) {
+    setLoc('off', 'Not available');
+    showLocHelp('This browser can’t share location.');
+    return;
+  }
   watchId = navigator.geolocation.watchPosition(p => {
     S.me = {lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy};
     store.set('twenny.loc', true);
+    hideLocHelp();
     setLoc('on', '±' + Math.round(p.coords.accuracy * 1.0936) + ' yd');
     map.showMe(S.me);
     renderFix(false);
   }, err => {
     if (err.code === err.PERMISSION_DENIED) {
       stopLoc();
-      setLoc('off', 'Blocked: allow location for this site in Settings');
-    } else setLoc('pend', 'Still looking…');
+      setLoc('off', 'Blocked');
+      showLocHelp(blockedHelp(device));
+    } else if (err.code === err.POSITION_UNAVAILABLE && !S.me) {
+      setLoc('off', 'No position');
+      showLocHelp(unavailableHelp(device));
+    } else if (!S.me) setLoc('pend', 'Still looking…');
   }, {enableHighAccuracy: true, maximumAge: 10000, timeout: 30000});
   setLoc('pend', 'Finding you…');
+  permissionState().then(state => {
+    if (state === 'prompt' && watchId !== null && !S.me) setLoc('pend', 'Allow location when asked');
+  });
 }
 
 function stopLoc() {
@@ -308,6 +337,16 @@ function stopLoc() {
 }
 
 $('locBtn').addEventListener('click', () => (watchId === null ? startLoc() : stopLoc()));
+$('locRetry').addEventListener('click', startLoc);
+$('locDismiss').addEventListener('click', () => { hideLocHelp(); setLoc('', ''); });
+
+// Allowed in Settings while the note was up: carry on without another tap.
+const resumeIfAllowed = () => {
+  if ($('locHelp').hidden || watchId !== null) return;
+  permissionState().then(state => { if (state === 'granted') startLoc(); });
+};
+onPermissionChange(resumeIfAllowed);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') resumeIfAllowed(); });
 
 /* ---------- theme, version, offline, updates ---------- */
 
@@ -339,5 +378,9 @@ setListening(false);
 renderRecents();
 setRecentOpen(store.get('twenny.recentOpen', false));
 update('');
-if (store.get('twenny.loc', false)) startLoc();
+// Location was on last time: pick it up again, but only if it's still allowed,
+// so opening the app never pops a permission prompt the guard didn't ask for.
+if (store.get('twenny.loc', false)) {
+  permissionState().then(state => { if (state === 'granted' || state === 'unknown') startLoc(); });
+}
 addEventListener('load', () => map.resize());
