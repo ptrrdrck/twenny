@@ -46,7 +46,7 @@ function readNumber(ws, i) {
   return got ? {val, j} : null;
 }
 
-function numTok(raw) { return {t: 'num', v: parseFloat(raw), raw, dec: raw.includes('.'), unit: null}; }
+export function numTok(raw) { return {t: 'num', v: parseFloat(raw), raw, dec: raw.includes('.'), unit: null}; }
 
 export function tokenize(input) {
   let s = ' ' + String(input).toLowerCase() + ' ';
@@ -176,8 +176,31 @@ function splitRun(nums) {
   return null;
 }
 
+// Dictation often packs degrees and minutes into one number, the way NMEA
+// writes them: "3234.5" for 32 34.5, "11708.4" for 117 08.4. Nothing over 180
+// can be a single degree, minute or second value, so a number like that with
+// 4 to 7 digits before the point is read as DDMM, DDDMM, DDMMSS or DDDMMSS
+// (when the minutes and seconds come out under 60).
+const PACKED = {4: [2], 5: [3], 6: [2, 4], 7: [3, 5]};
+function unpack(toks) {
+  return toks.flatMap(t => {
+    const m = t.t === 'num' && t.v > 180 && /^(\d{4,7})(\.\d+)?$/.exec(t.raw);
+    if (!m) return [t];
+    const digits = m[1], cuts = [0, ...PACKED[digits.length], digits.length];
+    const parts = cuts.slice(1).map((c, i) => digits.slice(cuts[i], c));
+    parts[parts.length - 1] += m[2] || '';
+    if (parts.slice(1).some(p => parseFloat(p) >= 60)) return [t];
+    return parts.map(p => numTok(p));
+  });
+}
+
 export function parseFix(input, assumeNW = true) {
-  const toks = tokenize(input);
+  return parseTokens(tokenize(input), assumeNW);
+}
+
+// parseFix on tokens that are already split (reread.js edits them and parses again).
+export function parseTokens(tokens, assumeNW = true) {
+  const toks = unpack(tokens);
   if (!toks.some(t => t.t === 'num')) return {state: 'empty'};
   const {groups, mode} = groupTokens(toks);
   let comps = [];

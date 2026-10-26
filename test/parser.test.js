@@ -23,7 +23,12 @@ const CASES = [
   ['32° 34.500′ N   117° 08.400′ W', 32.575, -117.14],
   ['thirty two degrees forty minutes fifty two seconds north one hundred seventeen degrees ten minutes forty four seconds west', 32.681111, -117.178889],
   ['32 34 point 7 6 north 117 8 point 0 3 west', 32.579333, -117.133833],
-  ['32 41.7 1:17 10.5', 32.695, -117.175]
+  ['32 41.7 1:17 10.5', 32.695, -117.175],
+  // Packed by dictation or written NMEA-style: DDMM.m, DDDMM.m, DDMMSS, DDDMMSS
+  ['3234.5 11708.4', 32.575, -117.14],
+  ['3234.5N 11708.4W', 32.575, -117.14],
+  ['32 34.5 11708.4', 32.575, -117.14],
+  ['323430 1170824', 32.575, -117.14]
 ];
 
 for (const [text, lat, lon] of CASES) {
@@ -44,6 +49,10 @@ test('reports the format that was used', () => {
 test('one coordinate is partial', () => {
   assert.deepEqual(parseFix('32 40.5 north'), {state: 'partial', msg: 'Heard the latitude. Keep going with the longitude.'});
   assert.deepEqual(parseFix('117 10 west'), {state: 'partial', msg: 'Heard the longitude. Now say the latitude.'});
+});
+
+test('a big number is only unpacked when its minutes and seconds make sense', () => {
+  assert.equal(parseFix('3275 11708.4').state, 'error', '75 minutes');
 });
 
 test('no numbers is empty', () => {
