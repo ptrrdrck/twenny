@@ -73,6 +73,7 @@ export function tokenize(input) {
       else toks.push(numTok(w));
       i++; continue;
     }
+    if (/^\d+(\.\d+){2,}$/.test(w)) { toks.push(...splitRunOn(w).map(numTok)); i++; continue; }
     if (w === '-') { toks.push({t: 'minus'}); i++; continue; }
     if (w === ',') { toks.push({t: 'sep'}); i++; continue; }
     if (w === 'point' || w === 'dot' || w === 'decimal') {
@@ -182,16 +183,34 @@ function splitRun(nums) {
 // 4 to 7 digits before the point is read as DDMM, DDDMM, DDMMSS or DDDMMSS
 // (when the minutes and seconds come out under 60).
 const PACKED = {4: [2], 5: [3], 6: [2, 4], 7: [3, 5]};
+// "11708" -> ["117", "08"], or null when it doesn't come apart that way.
+function packedParts(digits) {
+  if (!PACKED[digits.length]) return null;
+  const cuts = [0, ...PACKED[digits.length], digits.length];
+  const parts = cuts.slice(1).map((c, i) => digits.slice(cuts[i], c));
+  return parts.slice(1).some(p => +p >= 60) ? null : parts;
+}
 function unpack(toks) {
   return toks.flatMap(t => {
     const m = t.t === 'num' && t.v > 180 && /^(\d{4,7})(\.\d+)?$/.exec(t.raw);
-    if (!m) return [t];
-    const digits = m[1], cuts = [0, ...PACKED[digits.length], digits.length];
-    const parts = cuts.slice(1).map((c, i) => digits.slice(cuts[i], c));
+    const parts = m && packedParts(m[1]);
+    if (!parts) return [t];
     parts[parts.length - 1] += m[2] || '';
-    if (parts.slice(1).some(p => parseFloat(p) >= 60)) return [t];
     return parts.map(p => numTok(p));
   });
+}
+
+// Two numbers run together with no space: "39.613" and "11708.168" heard as
+// "39.61311708.168". The second number's whole part is the end of the middle
+// digits; take the split that leaves it a believable degrees value, packed
+// (DDDMM, DDMM, ...) or plain, trying 5 digits, then 3, then the rest.
+// reread.js can still move the boundary if this guess lands far away.
+function splitRunOn(w) {
+  const [first, mid, ...rest] = w.split('.');
+  const ok = d => (d.length <= 3 ? +d <= 180 : !!packedParts(d) && +packedParts(d)[0] <= 180);
+  const k = [5, 3, 4, 2, 6, 7, 1].find(n => n < mid.length && ok(mid.slice(-n))) || 1;
+  const tail = mid.slice(-k) + '.' + rest.join('.');
+  return [first + '.' + mid.slice(0, -k), ...(rest.length > 1 ? splitRunOn(tail) : [tail])];
 }
 
 export function parseFix(input, assumeNW = true) {
