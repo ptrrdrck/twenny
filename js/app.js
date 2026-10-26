@@ -301,14 +301,11 @@ function syncThemeColor() {
 document.querySelectorAll('[data-theme-set]').forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.themeSet)));
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncThemeColor);
 
-const version = document.documentElement.dataset.version;
-$('ver').textContent = version.startsWith('__') ? 'dev' : version;
-
 registerSW(apply => {
   const b = $('updateBtn');
   b.hidden = false;
   b.onclick = () => { b.textContent = 'Refreshing…'; apply(); };
-});
+}, v => { $('ver').textContent = v; });
 
 /* ---------- start ---------- */
 
