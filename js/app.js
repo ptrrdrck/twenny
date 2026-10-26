@@ -321,21 +321,26 @@ talk.addEventListener('click', () => {
   startSession(true);
 });
 
-// Every listen starts the same way: get the microphone (the prompt shows the
-// first time a page load asks; after that it's instant and silent), then start
-// a recognizer. On an iPhone, one started without this can sit on "Listening"
-// with no audio: the first listen after a load worked and the next didn't.
+// Start listening. The first time in a page load, ask for the microphone on its
+// own first (a recognition that raises the mic prompt itself can stay stuck
+// after Allow on an iPhone); after that, start straight away, inside the tap.
 function startSession(fromTap) {
-  const prompting = !micReady;
+  if (micReady) {
+    if (openMic(fromTap)) { update(heard.value); return; }
+    setListening(false);
+    setStatus('off', 'Couldn’t start the mic. Tap and talk again.');
+    commit();
+    return;
+  }
   micAsking = true;
-  if (prompting) setStatus('pend', 'Allow the microphone when asked');
-  logVoice('mic: asking' + (prompting ? ' (prompt)' : ''));
+  setStatus('pend', 'Allow the microphone when asked');
+  logVoice('mic: asking (prompt)');
   askForMic().then(() => {
     micReady = true;
     logVoice('mic: ok');
     if (!micAsking) return;          // cancelled meanwhile
     micAsking = false;
-    if (openMic(fromTap && !prompting)) { update(heard.value); return; }
+    if (openMic(false)) { update(heard.value); return; }   // not inside the tap any more
     setListening(false);
     setStatus('off', 'Couldn’t start the mic. Tap and talk again.');
     commit();
