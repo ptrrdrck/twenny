@@ -179,10 +179,16 @@ const KEEP_LISTENING_MS = 20000;
 const MAX_EMPTY_SESSIONS = 4;
 // A session can also get stuck: on an iPhone, right after the mic prompt, it may
 // never get audio and never end. Drop it and start a fresh one if the mic hasn't
-// started feeding it by STALL_NO_AUDIO_MS, or nothing at all has come back by
-// STALL_NO_WORDS_MS (a healthy silent session ends itself before that).
+// started feeding it by STALL_NO_AUDIO_MS, or it has reported no speech by
+// STALL_NO_SPEECH_MS. That's also what a session with a dead audio feed looks
+// like on an iPhone (voice log: audio "started", then nothing at all while the
+// guard talked), and a fresh session gets a fresh feed.
 const STALL_NO_AUDIO_MS = 2500;
-const STALL_NO_WORDS_MS = 10000;
+const STALL_NO_SPEECH_MS = 6000;
+// After the separate mic request, give the iPhone time to shut that capture
+// down before recognition takes the mic: started straight after, recognition
+// got a dead feed (voice log: audio "started" instantly, then nothing).
+const MIC_SETTLE_MS = 1000;
 const STOP_GRACE_MS = 1500;   // after tap-to-stop, wait this long for the final words
 let session = null;   // {mic, fromTap, stopping, error, heard, audio}: the one listening now
 let heardAt = 0;      // when something was last heard (or the tap)
@@ -210,7 +216,10 @@ function openMic(fromTap) {
   const s = {fromTap, stopping: false, error: '', heard: false, audio: false, timers: [], n: ++sessionCount};
   try {
     s.mic = listen({
-      onEvent(name) { logVoice(`#${s.n} ${name}`); },
+      onEvent(name) {
+        if (name === 'speechstart') s.speech = true;
+        logVoice(`#${s.n} ${name}`);
+      },
       onAudio() { s.audio = gotAudio = true; },
       onText(t) {
         if (session !== s) return;
@@ -229,7 +238,7 @@ function openMic(fromTap) {
   logVoice(`#${s.n} started` + (fromTap ? '' : ' (no tap)'));
   session = s;
   if (s.mic.audioEvents) s.timers.push(setTimeout(() => { if (!s.audio) stalled(s); }, STALL_NO_AUDIO_MS));
-  s.timers.push(setTimeout(() => { if (!s.heard) stalled(s); }, STALL_NO_WORDS_MS));
+  s.timers.push(setTimeout(() => { if (!s.heard && !s.speech) stalled(s); }, STALL_NO_SPEECH_MS));
   return true;
 }
 
@@ -337,13 +346,17 @@ function startSession(fromTap) {
   logVoice('mic: asking (prompt)');
   askForMic().then(() => {
     micReady = true;
-    logVoice('mic: ok');
+    logVoice('mic: ok, settling');
     if (!micAsking) return;          // cancelled meanwhile
-    micAsking = false;
-    if (openMic(false)) { update(heard.value); return; }   // not inside the tap any more
-    setListening(false);
-    setStatus('off', 'Couldn’t start the mic. Tap and talk again.');
-    commit();
+    setStatus('pend', 'Starting the mic…');
+    setTimeout(() => {
+      if (!micAsking) return;        // cancelled while settling
+      micAsking = false;
+      if (openMic(false)) { update(heard.value); return; }   // not inside the tap any more
+      setListening(false);
+      setStatus('off', 'Couldn’t start the mic. Tap and talk again.');
+      commit();
+    }, MIC_SETTLE_MS);
   }, err => {
     logVoice('mic: ' + (err && err.name));
     if (!micAsking) return;
@@ -363,7 +376,7 @@ const device = {standalone: navigator.standalone === true || matchMedia('(displa
 let sessionCount = 0, logT0 = performance.now();
 const logLines = [];
 function logVoice(msg) {
-  logLines.push(((performance.now() - logT0) / 1000).toFixed(1).padStart(6) + 's  ' + msg);
+  logLines.push(((performance.now() - logT0) / 1000).toFixed(2).padStart(7) + 's  ' + msg);
   if (logLines.length > 80) logLines.shift();
   if (!$('vlogBox').hidden) $('vlog').textContent = logLines.join('\n');
 }
