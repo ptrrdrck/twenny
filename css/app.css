@@ -1,116 +1,193 @@
 /* Twenny layout and components. Tokens come from theme.css.
-   The first block is STYLE.md's component set as written; Twenny-only pieces follow. */
+   The first block is the Nado Waves forecast page's components as written
+   (STYLE.md lists them); Twenny-only pieces follow. */
 
-/* ---------- STYLE.md base + components ---------- */
+/* ---------- Forecast-page base + components ---------- */
 *{box-sizing:border-box;touch-action:manipulation}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-body{margin:0;padding:0 16px 40px;background:var(--paper);color:var(--ink);
-  font:400 17px/1.5 Archivo,system-ui,-apple-system,"Segoe UI",sans-serif}
-button{font:inherit;color:inherit;cursor:pointer}
+body{background:var(--paper);color:var(--ink);
+  font:400 17px/1.5 Archivo,system-ui,-apple-system,"Segoe UI",sans-serif;
+  padding:0 16px 48px;margin:0}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:18px;padding-block:18px 0}
+h1{font-family:"Barlow Condensed",Archivo,sans-serif;font-weight:700;font-size:34px;
+   line-height:1.02;letter-spacing:.01em;margin:0;text-wrap:balance}
+.lbl{font-family:"Barlow Condensed",Archivo,sans-serif;font-weight:600;text-transform:uppercase;
+     letter-spacing:.09em;font-size:14px;color:var(--soft)}
+header{display:flex;flex-direction:column;gap:9px;border-bottom:1px solid var(--line);padding-bottom:14px}
+.head-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+/* Segmented control; the selected segment is the page's solid blue. */
+.tabs{display:flex;gap:0;background:var(--card);border:1px solid var(--line);
+      border-radius:var(--r);padding:3px;box-shadow:var(--shadow)}
+
+/* Loud, above everything it qualifies. */
+.stale{background:var(--signal-wash);border:1px solid var(--signal);color:var(--ink);
+       border-radius:var(--r);padding:10px 12px;font-size:13.5px;margin:0}
+.stale b{color:var(--signal)}
+
+/* A card: small label, the value, supporting lines, provenance. */
+.cond{display:flex;flex-direction:column;gap:2px;padding:11px 13px;background:var(--card);
+      border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.cond .lbl{font-size:12.5px}
+.cond .val{font-size:19px;font-weight:600;line-height:1.25;margin:0}
+.unit{font-weight:400;color:var(--soft)}
+.cond .srcs{display:flex;flex-direction:column;gap:2px;margin-top:12px}
+.cond .turn{font-size:13.5px;color:var(--soft);margin:0}
+.cond .turn b{color:var(--ink);font-weight:600}
+
+/* Rows of figures (the forecast's wave trains). */
+.trains{display:flex;flex-direction:column;gap:3px;margin-top:3px}
+.train{display:flex;align-items:baseline;gap:8px;font-size:14px;font-variant-numeric:tabular-nums}
+.train .ht{font-weight:600}
+.train .tag{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;
+            white-space:nowrap;flex:none}
+
+/* Provenance pills: the second grows out of the first. */
+.pill,.pill-tail{display:inline-flex;align-items:center;height:18px;box-sizing:border-box;
+  background:var(--paper);color:var(--ink);font-size:12px;font-weight:400;line-height:1;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill{gap:5px;padding:0 7px;border-radius:4px}
+.pills{display:inline-flex;flex-wrap:wrap;align-items:center;row-gap:2px;vertical-align:top;max-width:100%}
+.pill-tail{margin-left:-4px;padding:0 7px 0 13px;border-radius:0 4px 4px 0;
+  -webkit-mask:linear-gradient(#000 0 0),
+    radial-gradient(circle at 0 calc(50% - 5px),#000 6px,transparent 6.5px),
+    radial-gradient(circle at 0 calc(50% + 5px),#000 6px,transparent 6.5px),
+    linear-gradient(#000 0 0) 0 50%/6px 10px no-repeat;
+  -webkit-mask-composite:source-out,source-over,source-over;
+  mask:linear-gradient(#000 0 0),
+    radial-gradient(circle at 0 calc(50% - 5px),#000 6px,transparent 6.5px),
+    radial-gradient(circle at 0 calc(50% + 5px),#000 6px,transparent 6.5px),
+    linear-gradient(#000 0 0) 0 50%/6px 10px no-repeat;
+  mask-composite:subtract,add,add}
+.status{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dot-ok);flex:none}
+.status.due{animation:status-due 2s ease-in-out infinite} .status.over{background:var(--dot-over)}
+@keyframes status-due{0%,100%{opacity:1}50%{opacity:.2}}
+@media (prefers-reduced-motion: reduce){ .status.due{animation:none;opacity:.45} }
+
+/* A fold: the whole line opens it; the caret points up closed, down open. */
+.chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px;
+            font-size:14.5px;font-weight:600;color:var(--ink);cursor:pointer;
+            -webkit-user-select:none;user-select:none}
+.chart-head:hover .calc-toggle{color:var(--ink)}
+.chart-head .count{margin-left:2px;color:var(--soft);font-weight:400;font-variant-numeric:tabular-nums}
+.calc-toggle{flex:none;display:grid;place-items:center;width:32px;height:32px;margin:-4px -6px -4px 0;
+             padding:0;border:0;border-radius:6px;background:transparent;color:var(--soft);cursor:pointer}
+.calc-toggle:hover{color:var(--ink)}
+.calc-toggle:focus-visible{outline:2px solid var(--surf);outline-offset:1px}
+.calc-toggle svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;
+                 stroke-linecap:round;stroke-linejoin:round;transition:transform .15s ease-out}
+.calc-toggle[aria-expanded="true"] svg{transform:rotate(180deg)}
+@media (prefers-reduced-motion: reduce){ .calc-toggle svg{transition:none} }
+
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.rows{display:flex;flex-direction:column;gap:5px;font-size:13.5px}
+.row{display:flex;align-items:flex-start;gap:8px}
+.row .who{flex:1;min-width:0}
+.row .amt{font-variant-numeric:tabular-nums;color:var(--soft);padding-top:1px}
+
+/* Quiet notes: greys, a warning triangle the one mark. */
+.warn{font-size:13px;color:var(--soft);border:1px solid var(--line-strong);
+      border-radius:var(--r);padding:9px 11px;margin:0;overflow-wrap:anywhere}
+.warn:not([hidden]){display:flex;align-items:flex-start;gap:8px}
+.warn svg{flex:none;width:16px;height:16px;margin-top:.5px;color:var(--faint)}
 a{color:var(--surf)}
-:focus-visible{outline:2.5px solid var(--surf);outline-offset:2px;border-radius:4px}
-
-h1{font-family:"Barlow Condensed",Archivo,sans-serif;font-weight:700;font-size:34px;line-height:1.02;letter-spacing:.01em;margin:0;text-wrap:balance}
-
-.lbl{font-family:"Barlow Condensed",Archivo,sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.09em;font-size:15px;color:var(--soft)}
-
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:16px}
-
-.primary{background:var(--surf);color:var(--surf-ink);border:1px solid var(--surf);border-radius:var(--r);padding:16px;
-  font-family:"Barlow Condensed",Archivo,sans-serif;font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:.07em;box-shadow:var(--shadow)}
-.primary[disabled]{opacity:.45;cursor:not-allowed}
-
-.chips{display:flex;flex-wrap:wrap;gap:7px}
-.chip{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:11px 14px;font-size:17px;font-weight:500;line-height:1.2;transition:background .12s,border-color .12s,color .12s}
-.chip:hover{border-color:var(--line-strong)}
-.chip[aria-pressed="true"]{background:var(--surf);border-color:var(--surf);color:var(--surf-ink);font-weight:600}
-.chip.ghost{background:transparent;border-style:dashed;color:var(--soft)}
-
-.mini{background:none;border:none;color:var(--surf);font-size:15px;font-weight:600;padding:2px 0;text-decoration:underline}
-
-input[type=text],input[type=number],textarea{font:inherit;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:var(--r);padding:12px 13px;width:100%}
-
-.note{font-size:14.5px;line-height:1.5;color:var(--soft);margin:0}
-.blind{font-size:12.5px;color:var(--soft);border-left:3px solid var(--sand-deep);padding:6px 0 6px 10px;margin:0}
-
-.status{font-size:14px;color:var(--soft);display:flex;align-items:center;gap:6px}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:0 0 auto}
-.dot.on{background:var(--ok)} .dot.pend{background:var(--sand-deep)} .dot.off{background:var(--signal)}
-
-.tbl{width:100%;border-collapse:collapse;font-size:15px;font-variant-numeric:tabular-nums}
-.tbl th{text-align:left;font-family:"Barlow Condensed",Archivo,sans-serif;text-transform:uppercase;letter-spacing:.07em;font-size:13.5px;color:var(--soft);font-weight:600;padding:6px 8px 6px 0;border-bottom:1px solid var(--line)}
-.tbl td{padding:7px 8px 7px 0;border-bottom:1px solid var(--line)}
-
-.toast{position:fixed;left:16px;right:16px;bottom:24px;margin:0 auto;max-width:508px;background:var(--ink);color:var(--paper);border-radius:var(--r);padding:11px 14px;font-size:15.5px;box-shadow:var(--shadow);z-index:9}
-
-details{border-top:1px solid var(--line);padding-top:12px}
-summary{cursor:pointer;font-family:"Barlow Condensed",Archivo,sans-serif;text-transform:uppercase;letter-spacing:.09em;font-size:15px;font-weight:600;color:var(--soft)}
-
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
-
-/* ---------- Layout ---------- */
-body{padding-top:env(safe-area-inset-top)}
-.wrap{max-width:540px;margin:0 auto;display:flex;flex-direction:column;gap:18px;padding-block:18px 0;
-  padding-bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))}
-.hdr{display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--line);padding-bottom:14px}
-.hdr .status{margin:0;flex-wrap:wrap}
-.sec{display:flex;flex-direction:column;gap:9px}
-.sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:9px}
-.heard-head{align-items:center;flex-wrap:wrap}
-h2.lbl{margin:0}
-.status{margin:0}
-.settings{padding-top:12px}
+.links{margin:0;font-size:13px;display:flex;flex-direction:row;justify-content:space-between;
+       align-items:center;flex-wrap:wrap;gap:4px 12px;
+       border-top:1px solid var(--line);padding-top:12px;color:var(--soft)}
+select{font:inherit;font-size:14px;padding:5px 8px;border-radius:8px;border:1px solid var(--line-strong);
+       background:var(--card);color:var(--ink)}
+:focus-visible{outline:2px solid var(--surf);outline-offset:2px}
+@media(max-width:380px){ h1{font-size:29px} }
 
 /* ---------- Twenny-only ---------- */
 
-/* Transcript: bigger than body text so it reads in sun */
-#heard{font-size:21px;line-height:1.35;font-variant-numeric:tabular-nums;resize:none;min-height:3.4em}
-#parseStatus{font-size:15.5px;color:var(--ink)}
-#parseStatus.err{color:var(--signal);font-weight:600}
+.wrap{padding-bottom:calc(var(--dock-h) + env(safe-area-inset-bottom))}
+/* Pills sit on cards on the forecast page; in the header they need the card's colour to show. */
+header .pill,header .pill-tail{background:var(--card)}
+.cond .card-top{align-items:center}
+body{padding-top:env(safe-area-inset-top)}
 
-/* Sticky talk button, thumb reach */
-.dock{position:fixed;left:0;right:0;bottom:0;z-index:8;background:var(--paper);border-top:1px solid var(--line);
-  padding:10px 16px calc(10px + env(safe-area-inset-bottom))}
-.talk{display:block;width:100%;max-width:540px;margin:0 auto;min-height:72px;font-size:24px;letter-spacing:.08em}
-.talk[aria-pressed="true"]{background:var(--pin);border-color:var(--pin);color:var(--pin-ink);animation:listen 1.4s ease-in-out infinite}
-@keyframes listen{50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--pin) 30%,transparent)}}
+/* Buttons, after the forecast's gate buttons; at least 44 px for a thumb. */
+.btn{font:inherit;font-size:15px;padding:7px 12px;min-height:44px;border-radius:8px;
+     border:1px solid var(--line-strong);background:var(--card);color:var(--ink);cursor:pointer;
+     text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.btn.small{min-height:36px;padding:5px 11px;font-size:14px}
+.link-btn{font:inherit;font-size:15px;padding:4px 0;border:0;background:none;color:var(--surf);
+          text-decoration:underline;cursor:pointer}
 
-.toast{bottom:calc(var(--dock-h) + 12px + env(safe-area-inset-bottom))}
-button.toast{display:block;width:calc(100% - 32px);border:none;text-align:left;font-weight:600;font-size:17px;padding:14px}
+/* Heard: the transcript is big enough to read in sun. */
+#heard{font:inherit;font-size:21px;line-height:1.35;font-variant-numeric:tabular-nums;width:100%;
+       min-height:3.4em;resize:none;margin-top:6px;padding:10px 12px;border-radius:8px;
+       border:1px solid var(--line-strong);background:var(--paper);color:var(--ink)}
+.cond .heard-status{display:flex;align-items:center;gap:7px;font-size:15px;margin-top:8px}
+.cond .heard-status.err{color:var(--signal);font-weight:600}
+.cond .warn{margin-top:8px}
+.check{display:flex;align-items:center;gap:9px;font-size:15px;color:var(--soft);margin-top:10px;
+       min-height:36px;cursor:pointer}
+.check input{width:20px;height:20px;margin:0;accent-color:var(--surf);flex:none}
 
 /* Map */
-.map{height:clamp(200px,33vh,420px);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;z-index:0}
-.leaflet-container{background:var(--surf-wash);font:inherit;font-size:14px}
+.map{height:clamp(200px,30vh,420px);border:1px solid var(--line);border-radius:var(--r);
+     overflow:hidden;box-shadow:var(--shadow);z-index:0}
+.leaflet-container{background:var(--surf-wash);font:inherit;font-size:13px}
 .leaflet-tile-pane{filter:var(--tile-filter)}
 .leaflet-bar,.leaflet-touch .leaflet-bar{border:1px solid var(--line);box-shadow:var(--shadow)}
-.leaflet-bar a,.leaflet-touch .leaflet-bar a{background:var(--card);color:var(--ink);border-bottom-color:var(--line);width:44px;height:44px;line-height:44px;font-size:22px}
+.leaflet-bar a,.leaflet-touch .leaflet-bar a{background:var(--card);color:var(--ink);border-bottom-color:var(--line);
+  width:44px;height:44px;line-height:44px;font-size:22px}
 .leaflet-control-attribution{background:var(--card)!important;color:var(--soft)}
 .leaflet-control-attribution a{color:var(--surf)}
-.leaflet-tooltip{background:var(--card);color:var(--ink);border:1px solid var(--line);box-shadow:var(--shadow);font-size:14px}
+.leaflet-tooltip{background:var(--card);color:var(--ink);border:1px solid var(--line);box-shadow:var(--shadow);font-size:13px}
 .leaflet-tooltip-top:before{border-top-color:var(--line)}
 .pin svg{display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
 .pin .pin-body{fill:var(--pin);stroke:var(--pin-ink);stroke-width:2}
 .pin .pin-eye{fill:var(--pin-ink)}
 .me-dot{fill:var(--surf);fill-opacity:1;stroke:var(--card);stroke-width:3}
 .me-acc{fill:var(--surf);fill-opacity:.12;stroke:var(--surf);stroke-opacity:.35;stroke-width:1}
-.lm-dot{fill:var(--sand-deep);fill-opacity:1;stroke:var(--card);stroke-width:2}
+.lm-dot{fill:var(--soft);fill-opacity:1;stroke:var(--card);stroke-width:2}
 .lm-line{stroke:var(--ink);stroke-opacity:.55;stroke-width:2;stroke-dasharray:3 6;fill:none}
 
-/* Fix card */
-.where{display:flex;flex-direction:column;gap:6px;scroll-margin:12px 0 calc(var(--dock-h) + 12px + env(safe-area-inset-bottom))}
-.where p{margin:0}
-.where-main{font-size:24px;font-weight:700;line-height:1.2}
-.where-you{font-size:19px;font-weight:600;line-height:1.3}
-.warn{color:var(--signal);border-left:3px solid var(--signal);padding:6px 0 6px 10px;font-weight:600;font-size:16px;line-height:1.4}
-.fmt-tbl th{width:3.6em;vertical-align:top;padding-top:9px}
-.fmt-tbl td{font-size:19px;font-weight:600;line-height:1.35}
-.fmt-tbl td span{display:inline-block;margin-right:.7em}
-.fmt-tbl tr:last-child th,.fmt-tbl tr:last-child td{border-bottom:none}
-.actions .chip{flex:1 1 auto;text-align:center;text-decoration:none;color:var(--ink);font-weight:600}
+/* Fix card: the answer and the figures a size up from the forecast's, for sun. */
+#fixCard .stale{margin:6px 0 4px}
+#whereLm,#whereYou,#farWarn{scroll-margin:12px 0 calc(var(--dock-h) + 12px + env(safe-area-inset-bottom))}
+#fixCard .val{font-size:22px;margin-top:2px}
+#fixCard #whereYou{font-size:15px;margin-top:2px}
+.fmts{margin-top:10px;gap:4px}
+.fmts .train{font-size:17px;justify-content:space-between}
+.fmts .train .ht span{display:inline-block;margin-right:.6em}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.acts .btn{flex:1 1 auto;font-weight:600}
 
-/* Recent fixes */
-.recent{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
-.rec{width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--line);padding:11px 0;display:flex;flex-direction:column;gap:2px}
-.rec-fix{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
-.rec-meta{font-size:14px;color:var(--soft)}
+/* Recent fixes: a fold on the backdrop, as the forecast's Briefing is. */
+.fold-sec{display:flex;flex-direction:column;gap:6px;padding:0 13px}
+.fold-body{display:flex;flex-direction:column;gap:10px;padding-top:2px}
+.fold-body .rows{gap:0}
+.rec{width:100%;padding:9px 0;margin:0;border:0;border-bottom:1px solid var(--line);background:none;
+     font:inherit;color:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.rec .who{display:flex;flex-direction:column;gap:1px}
+.rec .fixline{font-size:15px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.rec .meta{color:var(--soft)}
+.fold-body > .btn{align-self:flex-start}
+
+/* Footer */
+.links .theme{display:flex;align-items:center;gap:6px}
+.links-note{flex-basis:100%;color:var(--faint);font-size:12px}
+
+/* Sticky talk button, thumb reach: the selected-tab look, big. */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:8;background:var(--paper);border-top:1px solid var(--line);
+      padding:10px 16px calc(10px + env(safe-area-inset-bottom))}
+.dock-track{max-width:560px;margin:0 auto}
+.talk{flex:1;min-height:60px;border:0;border-radius:calc(var(--r) - 3px);cursor:pointer;
+      background:var(--surf);color:var(--surf-ink);font:inherit;font-family:"Barlow Condensed",Archivo,sans-serif;
+      font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:21px}
+.talk[aria-pressed="true"]{background:var(--pin);color:var(--pin-ink);animation:listen 1.4s ease-in-out infinite}
+@keyframes listen{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--pin) 30%,transparent)}}
+@media (prefers-reduced-motion: reduce){ .talk[aria-pressed="true"]{animation:none} }
+
+/* Toasts sit above the talk bar. */
+.toast{position:fixed;left:16px;right:16px;margin:0 auto;max-width:528px;z-index:9;
+       bottom:calc(var(--dock-h) + 12px + env(safe-area-inset-bottom));
+       background:var(--ink);color:var(--paper);border-radius:var(--r);padding:11px 14px;
+       font-size:15px;box-shadow:var(--shadow)}
+button.toast{display:block;width:calc(100% - 32px);border:0;text-align:left;font:inherit;font-weight:600;
+             font-size:16px;padding:14px;cursor:pointer}

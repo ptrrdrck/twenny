@@ -33,10 +33,21 @@ const heard = $('heard');
 
 /* ---------- parsing and the fix card ---------- */
 
+// kind: '' (no dot), 'on' (green), 'pend' (green, blinking), 'off' (red).
+function setDot(el, kind) {
+  el.hidden = !kind;
+  el.className = 'status' + (kind === 'pend' ? ' due' : kind === 'off' ? ' over' : '');
+}
+
 function setStatus(kind, text) {
-  $('parseDot').className = 'dot' + (kind ? ' ' + kind : '');
+  setDot($('parseDot'), kind);
   $('parseStatus').classList.toggle('err', kind === 'off');
   $('parseText').textContent = text;
+}
+
+// Provenance pills: the first a pill, the rest grow out of it.
+function setPills(el, texts) {
+  el.replaceChildren(...texts.map((t, i) => Object.assign(document.createElement('span'), {className: i ? 'pill-tail' : 'pill', textContent: t})));
 }
 
 function update(text) {
@@ -71,14 +82,14 @@ function renderFix(pan) {
   const warn = farWarning(fix);
   $('whereLm').textContent = near.line;
   $('whereLm').hidden = !!warn;
-  $('farWarn').textContent = warn || '';
   $('farWarn').hidden = !warn;
+  if (warn) $('farWarn').replaceChildren(Object.assign(document.createElement('b'), {textContent: 'Far from San Diego. '}), warn);
   $('whereYou').hidden = !S.me;
   if (S.me) $('whereYou').textContent = fromYou(S.me, fix);
   const f = formats(fix);
   const cell = (id, s) => { $(id).replaceChildren(...s.split('  ').map(t => Object.assign(document.createElement('span'), {textContent: t}))); };
   cell('fDDM', f.ddm); cell('fDMS', f.dms); $('fDD').textContent = f.dd;
-  $('fixNotes').textContent = ['Heard ' + fix.fmt.toLowerCase(), ...fix.notes].join(' · ');
+  setPills($('fixPills'), [fix.fmt, ...fix.notes]);
   const links = mapLinks(fix);
   $('appleBtn').href = links.apple;
   $('googleBtn').href = links.google;
@@ -92,8 +103,9 @@ function commit() {
   S.recents = addRecent(S.recents, {...S.fix, t: Date.now()});
   store.set('twenny.recent', S.recents);
   renderRecents();
-  // Make sure the answer line isn't hidden under the talk button.
-  document.querySelector('.where').scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  // Make sure the answer (and the line from you) isn't hidden under the talk button.
+  const answer = !$('whereYou').hidden ? $('whereYou') : $('farWarn').hidden ? $('whereLm') : $('farWarn');
+  answer.scrollIntoView({block: 'nearest', behavior: 'smooth'});
 }
 
 function when(t) {
@@ -102,20 +114,17 @@ function when(t) {
   return d.toDateString() === now.toDateString() ? time : d.toLocaleDateString([], {month: 'short', day: 'numeric'}) + ' ' + time;
 }
 
+const el = (tag, className, textContent) => Object.assign(document.createElement(tag), {className, textContent});
+
 function renderRecents() {
   $('recentSec').hidden = !S.recents.length;
+  $('recentCount').textContent = S.recents.length;
   $('recentList').replaceChildren(...S.recents.map(e => {
-    const li = document.createElement('li');
-    const b = document.createElement('button');
+    const b = el('button', 'row rec');
     b.type = 'button';
-    b.className = 'rec';
-    const top = document.createElement('span');
-    top.className = 'rec-fix';
-    top.textContent = formats(e).ddm;
-    const meta = document.createElement('span');
-    meta.className = 'rec-meta';
-    meta.textContent = when(e.t) + ' · ' + (farWarning(e) ? 'far from San Diego' : nearest(e).line);
-    b.append(top, meta);
+    const who = el('span', 'who');
+    who.append(el('span', 'fixline', formats(e).ddm), el('span', 'meta', farWarning(e) ? 'Far from San Diego' : nearest(e).line));
+    b.append(who, el('span', 'amt', when(e.t)));
     b.addEventListener('click', () => {
       stopListening();
       heard.value = e.text;
@@ -124,10 +133,22 @@ function renderRecents() {
       renderFix(true);
       window.scrollTo({top: 0, behavior: 'smooth'});
     });
-    li.append(b);
-    return li;
+    return b;
   }));
 }
+
+function setRecentOpen(open) {
+  $('recentToggle').setAttribute('aria-expanded', String(open));
+  $('recentBody').hidden = !open;
+  store.set('twenny.recentOpen', open);
+}
+$('recentHead').addEventListener('click', () => setRecentOpen($('recentBody').hidden));
+$('recentClear').addEventListener('click', () => {
+  if (!confirm('Clear all recent fixes on this phone?')) return;
+  S.recents = [];
+  store.set('twenny.recent', S.recents);
+  renderRecents();
+});
 
 /* ---------- talking ---------- */
 
@@ -143,7 +164,7 @@ function setListening(on) {
 function useFallback(note) {
   S.voice = false;
   setListening(false);
-  $('fallbackNote').textContent = note;
+  $('fallbackText').textContent = note;
   $('fallbackNote').hidden = false;
 }
 
@@ -211,10 +232,10 @@ $('clearBtn').addEventListener('click', () => {
   update('');
 });
 
-const nwBtn = $('nwBtn');
-const renderNW = () => nwBtn.setAttribute('aria-pressed', String(S.assumeNW));
-nwBtn.addEventListener('click', () => {
-  S.assumeNW = !S.assumeNW;
+const nwBox = $('nwBox');
+const renderNW = () => { nwBox.checked = S.assumeNW; };
+nwBox.addEventListener('change', () => {
+  S.assumeNW = nwBox.checked;
   store.set('twenny.nw', S.assumeNW);
   renderNW();
   update(heard.value);
@@ -250,8 +271,11 @@ $('copyBtn').addEventListener('click', async () => {
 
 let watchId = null;
 
+// The header's location pill: "GPS" with its dot, then what it's doing.
 function setLoc(kind, text) {
-  $('locDot').className = 'dot' + (kind ? ' ' + kind : '');
+  $('locName').firstChild.textContent = kind ? 'GPS ' : 'Location off';
+  setDot($('locDot'), kind);
+  $('locText').hidden = !kind;
   $('locText').textContent = text;
   $('locBtn').textContent = watchId === null ? 'Use my location' : 'Stop';
 }
@@ -261,14 +285,14 @@ function startLoc() {
   watchId = navigator.geolocation.watchPosition(p => {
     S.me = {lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy};
     store.set('twenny.loc', true);
-    setLoc('on', 'Location on, ±' + Math.round(p.coords.accuracy * 1.0936) + ' yd');
+    setLoc('on', '±' + Math.round(p.coords.accuracy * 1.0936) + ' yd');
     map.showMe(S.me);
     renderFix(false);
   }, err => {
     if (err.code === err.PERMISSION_DENIED) {
       stopLoc();
-      setLoc('off', 'Location blocked. Allow it for this site in Settings.');
-    } else setLoc('pend', 'Still looking for GPS…');
+      setLoc('off', 'Blocked: allow location for this site in Settings');
+    } else setLoc('pend', 'Still looking…');
   }, {enableHighAccuracy: true, maximumAge: 10000, timeout: 30000});
   setLoc('pend', 'Finding you…');
 }
@@ -279,7 +303,7 @@ function stopLoc() {
   S.me = null;
   store.set('twenny.loc', false);
   map.hideMe();
-  setLoc('', 'Location off');
+  setLoc('', '');
   renderFix(false);
 }
 
@@ -291,14 +315,14 @@ function applyTheme(t) {
   const root = document.documentElement;
   if (t === 'light' || t === 'dark') root.dataset.theme = t; else delete root.dataset.theme;
   store.set('twenny.theme', t);
-  document.querySelectorAll('[data-theme-set]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themeSet === t)));
+  $('themeSel').value = t;
   syncThemeColor();
 }
 function syncThemeColor() {
   const paper = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
   document.querySelector('meta[name="theme-color"]').content = paper;
 }
-document.querySelectorAll('[data-theme-set]').forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.themeSet)));
+$('themeSel').addEventListener('change', e => applyTheme(e.target.value));
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncThemeColor);
 
 registerSW(apply => {
@@ -313,6 +337,7 @@ applyTheme(store.get('twenny.theme', 'auto'));
 renderNW();
 setListening(false);
 renderRecents();
+setRecentOpen(store.get('twenny.recentOpen', false));
 update('');
 if (store.get('twenny.loc', false)) startLoc();
 addEventListener('load', () => map.resize());

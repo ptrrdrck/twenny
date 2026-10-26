@@ -25,70 +25,67 @@
 </head>
 <body>
 <main class="wrap">
-  <header class="hdr">
-    <h1>Twenny</h1>
-    <p class="status" id="locStatus"><span class="dot" id="locDot"></span><span id="locText">Location off</span>
-      <button class="mini" id="locBtn" type="button">Use my location</button></p>
+  <header>
+    <div class="head-top">
+      <h1>Twenny</h1>
+      <button class="link-btn" id="locBtn" type="button">Use my location</button>
+    </div>
+    <span class="pills" id="locPills"><span class="pill" id="locName">Location off<span class="status" id="locDot" hidden></span></span><span class="pill-tail" id="locText" hidden></span></span>
   </header>
 
-  <section class="sec" aria-labelledby="heardLbl">
-    <div class="sec-head heard-head">
+  <section class="cond" aria-labelledby="heardLbl">
+    <div class="card-top">
       <label class="lbl" id="heardLbl" for="heard">Heard</label>
-      <div class="chips">
-        <button class="chip" id="nwBtn" type="button" aria-pressed="true">Assume N &amp; W</button>
-        <button class="chip ghost" id="clearBtn" type="button">Clear</button>
-      </div>
+      <button class="btn small" id="clearBtn" type="button">Clear</button>
     </div>
     <textarea id="heard" rows="2" placeholder="Tap and talk, or type the fix" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"></textarea>
-    <p class="status" id="parseStatus" aria-live="polite"><span class="dot" id="parseDot"></span><span id="parseText">Waiting for a fix</span></p>
-    <p class="blind" id="fallbackNote" hidden></p>
+    <p class="turn heard-status" id="parseStatus" aria-live="polite"><span class="status" id="parseDot" hidden></span><span id="parseText">Waiting for a fix</span></p>
+    <p class="warn" id="fallbackNote" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span id="fallbackText"></span></p>
+    <label class="check"><input type="checkbox" id="nwBox" checked> Assume N &amp; W when no direction is said</label>
   </section>
 
   <div class="map" id="map" role="region" aria-label="Map"></div>
 
-  <section class="card" id="fixCard" hidden aria-live="polite">
-    <div class="where">
-      <p class="where-main" id="whereLm"></p>
-      <p class="where-you" id="whereYou" hidden></p>
-      <p class="warn" id="farWarn" hidden></p>
+  <section class="cond" id="fixCard" hidden aria-live="polite" aria-labelledby="fixLbl">
+    <span class="lbl" id="fixLbl">Fix</span>
+    <p class="stale" id="farWarn" hidden></p>
+    <p class="val" id="whereLm"></p>
+    <p class="turn" id="whereYou" hidden></p>
+    <div class="trains fmts">
+      <div class="train"><span class="ht" id="fDDM"></span><span class="tag">DDM</span></div>
+      <div class="train"><span class="ht" id="fDMS"></span><span class="tag">DMS</span></div>
+      <div class="train"><span class="ht" id="fDD"></span><span class="tag">DD</span></div>
     </div>
-    <table class="tbl fmt-tbl">
-      <tbody>
-        <tr><th scope="row">DDM</th><td id="fDDM"></td></tr>
-        <tr><th scope="row">DMS</th><td id="fDMS"></td></tr>
-        <tr><th scope="row">DD</th><td id="fDD"></td></tr>
-      </tbody>
-    </table>
-    <p class="note" id="fixNotes"></p>
-    <div class="chips actions">
-      <a class="chip" id="appleBtn" href="#" target="_blank" rel="noopener">Apple Maps</a>
-      <a class="chip" id="googleBtn" href="#" target="_blank" rel="noopener">Google Maps</a>
-      <button class="chip" id="copyBtn" type="button">Copy</button>
+    <div class="srcs"><span class="pills" id="fixPills"></span></div>
+    <div class="acts">
+      <a class="btn" id="appleBtn" href="#" target="_blank" rel="noopener">Apple Maps</a>
+      <a class="btn" id="googleBtn" href="#" target="_blank" rel="noopener">Google Maps</a>
+      <button class="btn" id="copyBtn" type="button">Copy</button>
     </div>
   </section>
 
-  <section class="sec" id="recentSec" hidden aria-labelledby="recentLbl">
-    <div class="sec-head"><h2 class="lbl" id="recentLbl">Recent</h2><button class="mini" id="recentClear" type="button">Clear</button></div>
-    <ul class="recent" id="recentList"></ul>
+  <section class="fold-sec" id="recentSec" hidden aria-label="Recent fixes">
+    <div class="chart-head" id="recentHead"><span>Recent fixes <span class="count" id="recentCount"></span></span><button
+      type="button" class="calc-toggle" id="recentToggle" aria-controls="recentBody" aria-expanded="false"
+      aria-label="Recent fixes"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 10 8 5.5 12.5 10"/></svg></button></div>
+    <div class="fold-body" id="recentBody" hidden>
+      <div class="rows" id="recentList"></div>
+      <button class="btn small" id="recentClear" type="button">Clear recent fixes</button>
+    </div>
   </section>
 
-  <details>
-    <summary>Settings</summary>
-    <div class="sec settings">
-      <span class="lbl">Theme</span>
-      <div class="chips" id="themeChips">
-        <button class="chip" type="button" data-theme-set="auto">Auto</button>
-        <button class="chip" type="button" data-theme-set="light">Light</button>
-        <button class="chip" type="button" data-theme-set="dark">Dark</button>
-      </div>
-      <p class="blind">Landmark positions are approximate. They live in data/landmarks.js.</p>
-      <p class="note">Map © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors. Version <span id="ver">not saved for offline yet</span>.</p>
-    </div>
-  </details>
+  <nav class="links" aria-label="Settings">
+    <label class="theme">Theme <select id="themeSel">
+      <option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option>
+    </select></label>
+    <span>Version <span id="ver">not saved yet</span></span>
+    <span class="links-note">Map © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors.
+      Landmark positions are approximate.</span>
+  </nav>
 </main>
 
 <div class="dock">
-  <button class="primary talk" id="talk" type="button" aria-pressed="false">Tap and talk</button>
+  <div class="tabs dock-track"><button class="talk" id="talk" type="button" aria-pressed="false">Tap and talk</button></div>
 </div>
 
 <p class="toast" id="toast" role="status" hidden></p>
