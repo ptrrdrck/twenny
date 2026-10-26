@@ -5,7 +5,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseFix, tokenize, distNm, bearing, compass, fmtDist, nearestLandmarks, toDDM, toDMS, LANDMARKS
-} from '../twenny-core.js';
+} from '../js/twenny-core.js';
 
 const TOL = 5e-6; // degrees, about half a metre
 
@@ -105,4 +105,15 @@ test('nearest landmark', () => {
   assert.equal(first.name, 'Imperial Beach Pier');
   assert.ok(Math.abs(first.d - 0.40625) < 1e-4);
   assert.ok(LANDMARKS.length >= 10);
+});
+
+test('landmarks file is sane (catches a dropped minus or a typo)', () => {
+  const names = new Set();
+  for (const l of LANDMARKS) {
+    assert.equal(typeof l.name, 'string', JSON.stringify(l));
+    assert.ok(!names.has(l.name), 'duplicate name ' + l.name);
+    names.add(l.name);
+    assert.ok(l.lat > 32.4 && l.lat < 33.0, `${l.name}: lat ${l.lat} is not near San Diego`);
+    assert.ok(l.lon > -117.5 && l.lon < -117.0, `${l.name}: lon ${l.lon} is not near San Diego (west is negative)`);
+  }
 });
