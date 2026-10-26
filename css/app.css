@@ -113,10 +113,6 @@ body{padding-top:env(safe-area-inset-top)}
      border:1px solid var(--line-strong);background:var(--card);color:var(--ink);cursor:pointer;
      text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
 .btn.small{min-height:36px;padding:5px 11px;font-size:14px}
-/* Location help under the header: the forecast's quiet note, a size up to read. */
-.loc-help{font-size:14.5px;line-height:1.45}
-.loc-help-body{display:flex;flex-direction:column;gap:9px;min-width:0}
-.loc-help-acts{display:flex;align-items:center;gap:14px}
 .link-btn{font:inherit;font-size:15px;padding:4px 0;border:0;background:none;color:var(--surf);
           text-decoration:underline;cursor:pointer}
 
