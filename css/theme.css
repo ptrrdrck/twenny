@@ -21,6 +21,8 @@
   --pin:#E0A800; --pin-ink:#16232B;
   /* Twenny-only: OSM tiles are bright; dim them in dark mode */
   --tile-filter:none;
+  /* Twenny-only layout: height of the sticky talk bar */
+  --dock-h:94px;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){

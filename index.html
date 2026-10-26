@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en" data-version="__TWENNY_VERSION__">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Twenny</title>
+<meta name="description" content="Say a GPS fix, see it on the map.">
+<meta name="theme-color" content="#EAEEEC">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Twenny">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preload" href="fonts/archivo-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/barlow-condensed-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<script>
+  // Apply a forced theme before first paint.
+  try { var t = localStorage.getItem('twenny.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<main class="wrap">
+  <header class="hdr">
+    <h1>Twenny</h1>
+    <p class="status" id="locStatus"><span class="dot" id="locDot"></span><span id="locText">Location off</span>
+      <button class="mini" id="locBtn" type="button">Use my location</button></p>
+  </header>
+
+  <section class="sec" aria-labelledby="heardLbl">
+    <div class="sec-head heard-head">
+      <label class="lbl" id="heardLbl" for="heard">Heard</label>
+      <div class="chips">
+        <button class="chip" id="nwBtn" type="button" aria-pressed="true">Assume N &amp; W</button>
+        <button class="chip ghost" id="clearBtn" type="button">Clear</button>
+      </div>
+    </div>
+    <textarea id="heard" rows="2" placeholder="Tap and talk, or type the fix" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"></textarea>
+    <p class="status" id="parseStatus" aria-live="polite"><span class="dot" id="parseDot"></span><span id="parseText">Waiting for a fix</span></p>
+    <p class="blind" id="fallbackNote" hidden></p>
+  </section>
+
+  <div class="map" id="map" role="region" aria-label="Map"></div>
+
+  <section class="card" id="fixCard" hidden aria-live="polite">
+    <div class="where">
+      <p class="where-main" id="whereLm"></p>
+      <p class="where-you" id="whereYou" hidden></p>
+      <p class="warn" id="farWarn" hidden></p>
+    </div>
+    <table class="tbl fmt-tbl">
+      <tbody>
+        <tr><th scope="row">DDM</th><td id="fDDM"></td></tr>
+        <tr><th scope="row">DMS</th><td id="fDMS"></td></tr>
+        <tr><th scope="row">DD</th><td id="fDD"></td></tr>
+      </tbody>
+    </table>
+    <p class="note" id="fixNotes"></p>
+    <div class="chips actions">
+      <a class="chip" id="appleBtn" href="#" target="_blank" rel="noopener">Apple Maps</a>
+      <a class="chip" id="googleBtn" href="#" target="_blank" rel="noopener">Google Maps</a>
+      <button class="chip" id="copyBtn" type="button">Copy</button>
+    </div>
+  </section>
+
+  <section class="sec" id="recentSec" hidden aria-labelledby="recentLbl">
+    <div class="sec-head"><h2 class="lbl" id="recentLbl">Recent</h2><button class="mini" id="recentClear" type="button">Clear</button></div>
+    <ul class="recent" id="recentList"></ul>
+  </section>
+
+  <details>
+    <summary>Settings</summary>
+    <div class="sec settings">
+      <span class="lbl">Theme</span>
+      <div class="chips" id="themeChips">
+        <button class="chip" type="button" data-theme-set="auto">Auto</button>
+        <button class="chip" type="button" data-theme-set="light">Light</button>
+        <button class="chip" type="button" data-theme-set="dark">Dark</button>
+      </div>
+      <p class="blind">Landmark positions are approximate. They live in data/landmarks.js.</p>
+      <p class="note">Map © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors. Version <span id="ver"></span>.</p>
+    </div>
+  </details>
+</main>
+
+<div class="dock">
+  <button class="primary talk" id="talk" type="button" aria-pressed="false">Tap and talk</button>
+</div>
+
+<p class="toast" id="toast" role="status" hidden></p>
+<button class="toast update" id="updateBtn" type="button" hidden>New version, tap to refresh</button>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
