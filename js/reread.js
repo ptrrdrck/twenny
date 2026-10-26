@@ -6,8 +6,8 @@
 //   - a decimal run into the next number        "32 34.5117 8.4"
 //   - two whole numbers run together            "32 3911708" (39, 117 08)
 //   - digits read one at a time                 "3 2 3 4.5 1 1 7 0 8.4"
-//   - every point and space dropped             "323961311708168" (Safari on an iPhone,
-//                                               for 32 39.613 117 08.168)
+//   - a fix said as digits, no "point"          "323961311708168", "32 39 613 117 08 168"
+//                                               (Safari on an iPhone, for 32 39.613 117 08.168)
 // along with a break between the coordinates where the live reading didn't
 // put one, and keeps a reading only if it lands near San Diego. Fewest changes
 // win; then readings that give both coordinates in the same format; then the
@@ -77,6 +77,17 @@ function changes(toks) {
       }
     }
   });
+  // A fix said as digits with no "point" can come back in any grouping
+  // ("32 39 613 117 08 168"): join each run of whole numbers and read the digits.
+  let from = 0;
+  for (let i = 0; i <= toks.length; i++) {
+    if (i < toks.length && isNum(toks[i]) && !toks[i].dec) continue;
+    const run = toks.slice(from, i), digits = run.map(t => t.raw).join('');
+    if (run.length >= 2 && digits.length >= 7) {
+      for (const r of digitReadings(digits)) out.push(swap(toks, from, run.length, ...r));
+    }
+    from = i + 1;
+  }
   // Single digits read one at a time: join each run (up to and including a
   // number with a decimal) and let the parser unpack it.
   const joined = [];

@@ -35,6 +35,14 @@ test('reread: every point and space dropped (Safari on an iPhone)', () => {
   assert.ok(!r.unsure, 'the decimal-degrees reading is miles further off');
 });
 
+// The same fix said as digits only, however the transcript groups them.
+for (const text of ['32 39 613 117 08 168', '3239613 11708168',
+                    'thirty two thirty nine six one three one seventeen oh eight one six eight']) {
+  test(`reread: said as digits, no "point": ${text}`, () => {
+    assert.ok(near(reread(text), 32 + 39.613 / 60, -117 - 8.168 / 60), JSON.stringify(reread(text)));
+  });
+}
+
 test('reread says how many changes it made', () => {
   assert.equal(reread('32 34.5 1 17 8.4').changes, 1);
 });
