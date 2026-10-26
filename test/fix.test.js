@@ -48,6 +48,13 @@ test('joinResults appends normal speech results', () => {
   assert.equal(joinResults(['', '  ']), '');
 });
 
+test('joinResults drops the repeat Safari sends when listening stops', () => {
+  // From the voice log: final "323961311708168", then the same again.
+  assert.equal(joinResults(['323961311708168', '323961311708168']), '323961311708168');
+  assert.equal(joinResults(['32 34.5 north', '32 34.5 north', '117 8.4 west']), '32 34.5 north 117 8.4 west');
+  assert.equal(joinResults(['32', '32', '10 north']), '32 32 10 north', 'short repeats can be real');
+});
+
 test('joinResults collapses Android cumulative results', () => {
   assert.equal(joinResults(['32', '32 40', '32 40.5 north'], true), '32 40.5 north');
   assert.equal(joinResults(['32 40.5 north', '117 10 west'], true), '32 40.5 north 117 10 west');

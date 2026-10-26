@@ -26,6 +26,15 @@ for (const [what, text] of SLIPS) {
   });
 }
 
+// From the voice log: Safari on an iPhone wrote "32 39.613, 117 08.168" with
+// every point and space dropped.
+test('reread: every point and space dropped (Safari on an iPhone)', () => {
+  const r = reread('323961311708168');
+  assert.ok(near(r, 32 + 39.613 / 60, -117 - 8.168 / 60), JSON.stringify(r));
+  assert.equal(r.fmt, 'Degrees, decimal minutes');
+  assert.ok(!r.unsure, 'the decimal-degrees reading is miles further off');
+});
+
 test('reread says how many changes it made', () => {
   assert.equal(reread('32 34.5 1 17 8.4').changes, 1);
 });
