@@ -20,6 +20,7 @@ const ASSETS = [
   'js/pwa.js',
   'js/speech.js',
   'js/twenny-core.js',
+  'js/reread.js',
   'data/landmarks.js',
   'vendor/leaflet/leaflet.css',
   'vendor/leaflet/leaflet.js',

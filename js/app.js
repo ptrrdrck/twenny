@@ -5,6 +5,7 @@ import {nearest, fromYou, farWarning, formats, copyText, mapLinks, addRecent} fr
 import {speechSupported, listen} from './speech.js';
 import {createMap} from './map.js';
 import {registerSW} from './pwa.js';
+import {reread} from './reread.js';
 
 const $ = id => document.getElementById(id);
 
@@ -93,6 +94,20 @@ function renderFix(pan) {
   $('appleBtn').href = links.apple;
   $('googleBtn').href = links.google;
   if (pan) map.showFix(fix, near, !!warn);
+}
+
+// The second look at everything heard, once the guard stops talking or finishes
+// typing, when the live reading couldn't place it near San Diego: reread.js
+// tries the usual speech-to-text slips. True if it found a reading.
+function recheck() {
+  const r = parseFix(heard.value, S.assumeNW);
+  if (r.state === 'ok' && !farWarning(r)) return false;
+  const rr = reread(heard.value, S.assumeNW);
+  if (!rr) return false;
+  S.fix = {lat: rr.lat, lon: rr.lon, fmt: rr.fmt, notes: [...rr.notes, 'Re-read'], text: heard.value.trim()};
+  setStatus('on', rr.unsure ? 'Re-read, but it could be read more than one way. Check the fix.' : 'Re-read the whole thing. Check the fix.');
+  renderFix(true);
+  return true;
 }
 
 /* ---------- recent fixes ---------- */
@@ -209,8 +224,11 @@ function micEnded(s) {
     useFallback('Voice is blocked here. Tap the box and use the mic on the keyboard, or allow the microphone for this site.');
     return;
   }
-  const state = parseFix(heard.value, S.assumeNW).state;
-  const carryOn = !s.stopping && S.listening && state !== 'ok' && !refused &&
+  const r = parseFix(heard.value, S.assumeNW), state = r.state;
+  // Done when there's a whole fix near San Diego. One far out at sea is usually
+  // a fix still being said ("32 34.5 1 17" before "8.4"), so keep listening.
+  const complete = state === 'ok' && !farWarning(r);
+  const carryOn = !s.stopping && S.listening && !complete && !refused &&
     e !== 'network' && e !== 'audio-capture' &&
     Date.now() - heardAt < KEEP_LISTENING_MS && emptyRuns < MAX_EMPTY_SESSIONS;
   if (carryOn) {
@@ -219,7 +237,8 @@ function micEnded(s) {
   }
   setListening(false);
   update(heard.value);
-  if (state !== 'ok') {
+  const rescued = recheck();
+  if (!complete && !rescued && state !== 'ok') {
     const why = e === 'network' ? 'Voice needs a connection. Tap the box and use the keyboard mic.'
       : e === 'audio-capture' ? 'No microphone found.'
       : !heard.value.trim() ? 'Didn’t hear anything. Tap and talk to try again.'
@@ -265,7 +284,7 @@ talk.addEventListener('click', () => {
 /* ---------- typing ---------- */
 
 heard.addEventListener('input', () => update(heard.value));
-heard.addEventListener('change', commit);
+heard.addEventListener('change', () => { recheck(); commit(); });
 heard.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); heard.blur(); }
 });
