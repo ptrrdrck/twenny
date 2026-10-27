@@ -2,7 +2,6 @@
 
 import {parseFix, LANDMARKS} from './twenny-core.js';
 import {nearest, fromYou, farWarning, formats, copyText, mapLinks, addRecent} from './fix.js';
-import {speechSupported, startListening, stopListening} from './speech.js';
 import {createMap} from './map.js';
 import {registerSW} from './pwa.js';
 import {reread} from './reread.js';
@@ -23,8 +22,7 @@ const S = {
   fix: null,            // {lat, lon, fmt, notes, text}
   me: null,             // {lat, lon, acc} in metres
   recents: store.get('twenny.recent', []),
-  listening: false,
-  voice: speechSupported,
+  entering: false,      // the Heard box is open (dictating or typing)
   prefix: ''            // kept text when continuing a partial fix
 };
 
@@ -52,17 +50,20 @@ function setPills(el, texts) {
 
 function update(text) {
   const r = parseFix(text, S.assumeNW);
-  // Mid-sentence, "32 34" is a valid fix in the Atlantic. Don't fly there
-  // while the guard is still talking; the warning shows once they stop.
-  if (r.state === 'ok' && S.listening && farWarning(r)) {
-    setStatus('pend', 'Listening…');
+  const whole = r.state === 'ok' && !farWarning(r);
+  // While the box is open, a whole fix near San Diego shows at once; anything
+  // short of that waits for Done. Mid-sentence, "32 34" is a valid fix in the
+  // Atlantic, and the second look shouldn't guess at half a fix.
+  if (S.entering && !whole) {
+    if (r.state === 'empty') setStatus('', 'Tap the mic on your keyboard and say the fix, or type it.');
+    else if (r.state === 'partial') setStatus('pend', r.msg);
+    else setStatus('pend', 'Keep going. Tap Done when the whole fix is in.');
     S.fix = null;
     renderFix(false);
     return;
   }
-  // Not a whole fix near San Diego, and nobody is mid-sentence (typing, or the
-  // guard has tapped stop): take the second look at the whole thing now.
-  if (!S.listening && r.state !== 'empty' && !(r.state === 'ok' && !farWarning(r)) && recheck()) return;
+  // Not a whole fix near San Diego: take the second look at the whole thing.
+  if (r.state !== 'empty' && !whole && recheck()) return;
   if (r.state === 'ok') {
     setStatus('on', 'Fix: ' + r.fmt.toLowerCase());
     const moved = !S.fix || S.fix.lat !== r.lat || S.fix.lon !== r.lon;
@@ -70,7 +71,7 @@ function update(text) {
     renderFix(moved);
     return;
   }
-  if (r.state === 'empty') setStatus('', S.listening ? 'Listening…' : 'Waiting for a fix');
+  if (r.state === 'empty') setStatus('', 'Waiting for a fix');
   else if (r.state === 'partial') setStatus('pend', r.msg);
   else setStatus('off', r.msg);
   S.fix = null;
@@ -141,7 +142,6 @@ function renderRecents() {
     who.append(el('span', 'fixline', formats(e).ddm), el('span', 'meta', farWarning(e) ? 'Far from San Diego' : nearest(e).line));
     b.append(who, el('span', 'amt', when(e.t)));
     b.addEventListener('click', () => {
-      cancelListening();
       heard.value = e.text;
       S.fix = {lat: e.lat, lon: e.lon, fmt: e.fmt, notes: e.notes || [], text: e.text};
       setStatus('on', 'From recent fixes, ' + when(e.t));
@@ -165,149 +165,51 @@ $('recentClear').addEventListener('click', () => {
   renderRecents();
 });
 
-/* ---------- talking ---------- */
+/* ---------- entering a fix ---------- */
 
-// Press to talk, as in the working examples (see speech.js): tap, speak, and
-// the browser ends the session when the guard stops. If it ends with only part
-// of a fix (a pause between latitude and longitude), Twenny listens again on
-// the same recognizer and adds to the text, the way react-speech-recognition
-// keeps going: start() again when 'end' comes. At most MAX_MORE times per tap.
+// Voice comes from the dictation mic on the phone's keyboard, the same on every
+// phone: the big button opens the Heard box with the keyboard up, the guard
+// taps the keyboard's mic (or types), then taps Done. Twenny doesn't use the
+// browser's speech API: on iPhones it went deaf too often (Oct 2026).
 const talk = $('talk');
-const MAX_MORE = 2;
-let session = null;   // {n, more, stopping, cancelled, error, heard}: the one listening now
+let openAtPress = false;   // was the box open when the finger came down on the button?
 
-function setListening(on) {
-  S.listening = on;
+function setEntering(on) {
+  S.entering = on;
   talk.setAttribute('aria-pressed', String(on));
-  talk.textContent = on ? 'Listening · tap to stop' : S.voice ? 'Tap and talk' : 'Type or dictate';
+  talk.textContent = on ? 'Done' : 'Say or type a fix';
 }
 
-function useFallback(note) {
-  S.voice = false;
-  setListening(false);
-  $('fallbackText').textContent = note;
-  $('fallbackNote').hidden = false;
-}
-
-// Start a session; false if the browser wouldn't start one.
-function listen(more) {
-  const s = {n: ++sessionCount, more, stopping: false, cancelled: false, error: '', heard: false};
-  const ok = startListening({
-    onEvent: name => logVoice(`#${s.n} ${name}`),
-    onText(t) {
-      if (s.cancelled) return;
-      s.heard = true;
-      heard.value = S.prefix ? S.prefix + ' ' + t : t;
-      update(heard.value);
-    },
-    onError(code) { s.error = code; },
-    onEnd() { ended(s); }
-  });
-  if (ok) session = s;
-  return ok;
-}
-
-function ended(s) {
-  if (session === s) session = null;
-  if (s.cancelled) return;
-  const e = s.error;
-  if (e === 'not-allowed' || e === 'service-not-allowed') {
-    useFallback('Voice is blocked here. Tap the box and use the mic on the keyboard, or allow the microphone for this site.');
-    return;
-  }
-  // Part of a fix heard, and the guard didn't tap stop: listen for the rest.
-  const r = parseFix(heard.value, S.assumeNW);
-  const complete = r.state === 'ok' && !farWarning(r);
-  if (!s.stopping && !complete && s.heard && s.more < MAX_MORE) {
-    S.prefix = heard.value.trim();
-    if (listen(s.more + 1)) { logVoice('listening for the rest'); return; }
-  }
-  setListening(false);
-  update(heard.value);   // not listening now, so this includes the second look
-  if (!S.fix) {
-    const why = e === 'network' ? 'Voice needs a connection. Tap the box and use the keyboard mic.'
-      : e === 'audio-capture' ? 'No microphone found.'
-      : !heard.value.trim() ? 'Didn’t hear anything. Tap and talk to try again.'
-      : r.state === 'partial' ? 'Tap and talk to say the rest.'
-      : '';
-    if (why) setStatus('off', why);
-  }
-  commit();
-}
-
-// Cancel without saving (Clear, picking a recent fix). Tapping the talk button
-// instead ends normally and saves the fix.
-function cancelListening() {
-  if (!session) return;
-  session.cancelled = true;
-  session = null;
-  setListening(false);
-  stopListening();
-}
-
-if (!S.voice) useFallback('Voice input isn’t available in this browser. Tap the box, then the mic on the keyboard.');
-
+// Tapping Done closes the keyboard before the tap lands (the box loses focus
+// first), so whether this is Done is decided when the finger comes down.
+talk.addEventListener('pointerdown', () => { openAtPress = S.entering; });
 talk.addEventListener('click', () => {
-  if (!S.voice) { heard.focus(); return; }
-  if (S.listening) {
-    // Done talking: the browser hands over its last words, then 'end' saves them.
-    logVoice('tap: stop');
-    if (session) session.stopping = true;
-    setListening(false);
-    stopListening();
-    return;
-  }
-  // Halfway through a fix ("heard the latitude"): keep it and listen for the rest.
-  const keep = parseFix(heard.value, S.assumeNW).state === 'partial';
-  S.prefix = keep ? heard.value.trim() : '';
-  if (!keep) heard.value = '';
-  logStart();
-  if (!listen(0)) { setStatus('off', 'Still finishing the last one. Tap and talk again.'); return; }
-  setListening(true);
-  update(heard.value);
-});
-
-const device = {standalone: navigator.standalone === true || matchMedia('(display-mode: standalone)').matches};
-
-/* ---------- voice log (footer): what the browser reported, for tracking down mic trouble ---------- */
-
-let sessionCount = 0, logT0 = performance.now();
-const logLines = [];
-function logVoice(msg) {
-  logLines.push(((performance.now() - logT0) / 1000).toFixed(2).padStart(7) + 's  ' + msg);
-  if (logLines.length > 80) logLines.shift();
-  if (!$('vlogBox').hidden) $('vlog').textContent = logLines.join('\n');
-}
-function logStart() {
-  logT0 = performance.now();
-  logLines.push('---');
-  logVoice('tap: listen');
-}
-$('vlogBtn').addEventListener('click', () => {
-  const box = $('vlogBox');
-  box.hidden = !box.hidden;
-  $('vlogBtn').textContent = box.hidden ? 'Voice log' : 'Hide voice log';
-  if (!box.hidden) {
-    $('vlog').textContent = logLines.join('\n') || 'Nothing yet. Tap and talk, then look here.';
-    box.scrollIntoView({block: 'nearest'});
-  }
-});
-$('vlogCopy').addEventListener('click', async () => {
-  const text = [navigator.userAgent, 'home screen: ' + device.standalone, ...logLines].join('\n');
-  try { await navigator.clipboard.writeText(text); toast('Voice log copied'); } catch (e) { toast('Couldn’t copy; take a screenshot instead'); }
+  const done = S.entering || openAtPress;
+  openAtPress = false;
+  if (done) { heard.blur(); return; }
+  // A new fix: clear the last one, unless only half of one is in ("heard the
+  // latitude", no fix on screen); then keep it and add the rest.
+  if (!S.fix && parseFix(heard.value, S.assumeNW).state === 'partial') heard.value = heard.value.trimEnd() + ' ';
+  else heard.value = '';
+  heard.focus();   // inside the tap, so the keyboard opens
+  heard.setSelectionRange(heard.value.length, heard.value.length);
 });
 
 /* ---------- typing ---------- */
 
 heard.addEventListener('input', () => update(heard.value));
-heard.addEventListener('change', commit);
+heard.addEventListener('focus', () => { setEntering(true); update(heard.value); });
+// Done, Enter, or tapping elsewhere: read the whole thing and save it.
+heard.addEventListener('blur', () => {
+  setEntering(false);
+  update(heard.value);
+  commit();
+});
 heard.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); heard.blur(); }
 });
 
 $('clearBtn').addEventListener('click', () => {
-  logVoice('clear');
-  cancelListening();
   heard.value = '';
   update('');
 });
@@ -444,7 +346,7 @@ registerSW(apply => {
 
 applyTheme(store.get('twenny.theme', 'auto'));
 renderNW();
-setListening(false);
+setEntering(false);
 renderRecents();
 setRecentOpen(store.get('twenny.recentOpen', false));
 update('');

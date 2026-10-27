@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {nearest, fromYou, relTo, farWarning, formats, copyText, mapLinks, joinResults, addRecent} from '../js/fix.js';
+import {nearest, fromYou, relTo, farWarning, formats, copyText, mapLinks, addRecent} from '../js/fix.js';
 
 const PIER = {lat: 32.5794, lon: -117.1339};
 
@@ -39,26 +39,6 @@ test('three formats, copy text and map links', () => {
   const l = mapLinks(fix);
   assert.equal(l.apple, 'https://maps.apple.com/?ll=32.679500,-117.184000&q=Twenny%20fix');
   assert.equal(l.google, 'https://www.google.com/maps/search/?api=1&query=32.679500,-117.184000');
-});
-
-test('joinResults appends normal speech results', () => {
-  assert.equal(joinResults(['32 34.5 north', ' 117 8.4 west']), '32 34.5 north 117 8.4 west');
-  // A repeated number is real speech unless results are cumulative.
-  assert.equal(joinResults(['32', '32 10 north']), '32 32 10 north');
-  assert.equal(joinResults(['', '  ']), '');
-});
-
-test('joinResults drops the repeat Safari sends when listening stops', () => {
-  // From the voice log: final "323961311708168", then the same again.
-  assert.equal(joinResults(['323961311708168', '323961311708168']), '323961311708168');
-  assert.equal(joinResults(['32 34.5 north', '32 34.5 north', '117 8.4 west']), '32 34.5 north 117 8.4 west');
-  assert.equal(joinResults(['32', '32', '10 north']), '32 32 10 north', 'short repeats can be real');
-});
-
-test('joinResults collapses Android cumulative results', () => {
-  assert.equal(joinResults(['32', '32 40', '32 40.5 north'], true), '32 40.5 north');
-  assert.equal(joinResults(['32 40.5 north', '117 10 west'], true), '32 40.5 north 117 10 west');
-  assert.equal(joinResults(['32 40.5 north', 'north'], true), '32 40.5 north');
 });
 
 test('addRecent keeps newest first, skips repeats, caps length', () => {

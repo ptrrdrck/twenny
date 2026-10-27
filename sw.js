@@ -18,7 +18,6 @@ const ASSETS = [
   'js/fix.js',
   'js/map.js',
   'js/pwa.js',
-  'js/speech.js',
   'js/twenny-core.js',
   'js/reread.js',
   'data/landmarks.js',

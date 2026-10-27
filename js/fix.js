@@ -58,27 +58,6 @@ export function mapLinks(fix) {
   };
 }
 
-// Join speech-recognition results into one transcript. Chrome on Android
-// repeats earlier words in each new result ("32", "32 40", "32 40.5 north"),
-// so with cumulative=true a result that starts with what we have replaces it.
-// Safari on an iPhone sends the last result twice when listening stops, so a
-// result exactly the same as the one before it is dropped everywhere (short
-// ones like "32" excepted: those can really be said twice).
-export function joinResults(parts, cumulative = false) {
-  let out = '', last = '';
-  for (const raw of parts) {
-    const p = raw.trim();
-    if (!p) continue;
-    const repeat = p.length >= 5 && p.toLowerCase() === last.toLowerCase();
-    last = p;
-    if (repeat) continue;
-    if (cumulative && out && p.toLowerCase().startsWith(out.toLowerCase())) out = p;
-    else if (cumulative && out.toLowerCase().endsWith(p.toLowerCase())) continue;
-    else out = out ? out + ' ' + p : p;
-  }
-  return out;
-}
-
 // Newest first, no back-to-back duplicates, capped.
 export function addRecent(list, entry, max = 25) {
   const key = e => e.lat.toFixed(5) + ',' + e.lon.toFixed(5);

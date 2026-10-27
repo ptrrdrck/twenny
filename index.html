@@ -38,9 +38,8 @@
       <label class="lbl" id="heardLbl" for="heard">Heard</label>
       <button class="btn small" id="clearBtn" type="button">Clear</button>
     </div>
-    <textarea id="heard" rows="2" placeholder="Tap and talk, or type the fix" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"></textarea>
+    <textarea id="heard" rows="2" placeholder="Say it with the mic on your keyboard, or type it" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"></textarea>
     <p class="turn heard-status" id="parseStatus" aria-live="polite"><span class="status" id="parseDot" hidden></span><span id="parseText">Waiting for a fix</span></p>
-    <p class="warn" id="fallbackNote" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span id="fallbackText"></span></p>
     <label class="check"><input type="checkbox" id="nwBox" checked> Assume N &amp; W when no direction is said</label>
   </section>
 
@@ -79,18 +78,13 @@
       <option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option>
     </select></label>
     <span>Version <span id="ver">not saved yet</span></span>
-    <button class="link-btn vlog-btn" id="vlogBtn" type="button">Voice log</button>
     <span class="links-note">Map © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors.
       Landmark positions are approximate.</span>
   </nav>
-  <section class="vlog-box" id="vlogBox" hidden aria-label="Voice log">
-    <pre class="vlog" id="vlog"></pre>
-    <button class="btn small" id="vlogCopy" type="button">Copy log</button>
-  </section>
 </main>
 
 <div class="dock">
-  <div class="tabs dock-track"><button class="talk" id="talk" type="button" aria-pressed="false">Tap and talk</button></div>
+  <div class="tabs dock-track"><button class="talk" id="talk" type="button" aria-pressed="false">Say or type a fix</button></div>
 </div>
 
 <p class="toast" id="toast" role="status" hidden></p>
