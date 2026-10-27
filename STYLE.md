@@ -12,7 +12,7 @@ colour, chips and one card per screen. That theme is retired; don't bring it bac
 
 ## Fonts
 
-Archivo for body text and Barlow Condensed for labels, tabs and the talk button, both
+Archivo for body text and Barlow Condensed for labels, tabs and the entry button, both
 self-hosted in `fonts/` so the app works offline.
 
 - Body: `400 17px/1.5 Archivo, system-ui, -apple-system, "Segoe UI", sans-serif`
@@ -42,9 +42,9 @@ Light is the default. Dark follows the system, and `data-theme="light"` / `"dark
 
 Twenny-only tokens:
 - `--pin` / `--pin-ink` (`#E0A800` / `#16232B`, dark `#FFC61A` / `#06222A`): the fix itself.
-  Only the map pin and the talk button while listening.
+  Only the map pin and the entry button while it says Done.
 - `--tile-filter`: dims the bright OSM tiles in dark mode.
-- `--dock-h`: height of the sticky talk bar.
+- `--dock-h`: height of the sticky entry bar.
 
 ## Layout
 
@@ -52,7 +52,7 @@ Twenny-only tokens:
 - `header`: column, `gap: 9px`, a `--line` rule under it; `.head-top` puts the title and
   one action on a line.
 - Phone-first. Twenny's tap targets are at least 44 px (36 px for small secondary buttons).
-- The talk button is sticky at the bottom, padded with `env(safe-area-inset-bottom)`.
+- The entry button ("Say or type a fix") is sticky at the bottom, padded with `env(safe-area-inset-bottom)`.
 
 ## Components (forecast page)
 
@@ -61,7 +61,7 @@ Twenny-only tokens:
   `<b>` ink), then provenance `.srcs`.
 - **`.lbl`**: Barlow Condensed 600, uppercase, `.09em`, 14 px, `--soft`.
 - **`.tabs`**: segmented control; the selected segment is solid `--surf` with `--surf-ink`,
-  Barlow uppercase. Twenny's talk button is this look, as one big segment.
+  Barlow uppercase. Twenny's entry button is this look, as one big segment.
 - **Pills** (`.pills`, `.pill`, `.pill-tail`): 12 px provenance chips on `--paper`; each
   `.pill-tail` grows out of the one before. Status dot `.status` (7 px, `--dot-ok`),
   `.status.due` blinks, `.status.over` is red.
@@ -88,7 +88,7 @@ Twenny-only tokens:
   A far-off fix shows `.stale`.
 - Recent fixes: a fold on the backdrop, like the forecast's Briefing, with `.row`s inside.
 - Footer `.links`: theme, version, map credit.
-- Talk button: the selected-tab look, sticky, `--pin` while listening.
+- Entry button: the selected-tab look, sticky; `--pin` while it says Done.
 
 ## Feel
 
